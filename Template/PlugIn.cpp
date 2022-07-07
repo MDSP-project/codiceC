@@ -39,7 +39,11 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 
 
 	analisi(InputData_x, InputData_d, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize);
-	crossfilter(X, Y, X_buffer, G, K, M, N, FrameD);
+	for (int j = 0; j < FrameD; j++)
+	{
+		crossfilter(X, Y, X_buffer,delay_buffer,G,G_adj,D,K,M,N,FrameD,j);
+	}
+	
 	
 	return COMPLETED;
 }

@@ -36,8 +36,6 @@ bool read_dat(char* name, double* data, int dim) {
 }
 
 
-
-
 void cos_h(double* p0, double** H, int M, int N) {
 
 	double* tmp;
@@ -74,8 +72,6 @@ void cos_p(double* p0, double** H, int M, int N) {
 	ippsFree(tmp);
 
 }
-
-
 
 
 void petr_cos_h(double* p0, double** H, int M, int N) {
@@ -346,7 +342,7 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 }
 
 
-void crossfilter(double** X, double** Y, double** X_buffer,double** G,int K, int M, int N, int FrameD)
+double* crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffer, double** G, double** G_adj, double** D, int K, int M, int N, int FrameD, int j)
 {
 	Ipp64f* temp1=0;
 	Ipp64f* Y_tmp = 0;
@@ -363,38 +359,38 @@ void crossfilter(double** X, double** Y, double** X_buffer,double** G,int K, int
 		ippsZero_64f(Y_tmp, M);
 	}
 
-	for (int j = 0; j < FrameD; j++)
+
+	for (int m = 0; m < 2*M-1; m++)
 	{
-		for (int m = 0; m < 2*M-1; m++)
-		{
-			// scorrimento del vettore X_buff e aggiornamento
-			ippsCopy_64f(X_buffer[m], temp1, FrameD);
-			ippsCopy_64f(temp1, X_buffer[m] + 1, FrameD - 1);
-			X_buffer[m][0] = X[m][j];
-		}
+		// scorrimento del vettore X_buff e aggiornamento
+		ippsCopy_64f(X_buffer[m], temp1, FrameD);
+		ippsCopy_64f(temp1, X_buffer[m] + 1, FrameD - 1);
+		X_buffer[m][0] = X[m][j];
+	}
 
-		ippsZero_64f(Y_tmp, M);
+	ippsZero_64f(Y_tmp, M);
 
-		int q = 2;
+	int q = 2;
 
-		for (int m = 1; m < M-1; m++)
+	for (int m = 1; m < M-1; m++)
+	{
+		for(int k=0; k<K; k++)
 		{
-			for(int k=0; k<K; k++)
-			{
-				Y_tmp[m] = Y_tmp[m] + X_buffer[q][k] * G[m][k] + X_buffer[q - 1][k] * G[m - 1][k] + X_buffer[q + 1][k] * G[q + 1][k];
-			}
-			q = q + 2;
+			Y_tmp[m] = Y_tmp[m] + X_buffer[q][k] * G[m][k] + X_buffer[q - 1][k] * G[m - 1][k] + X_buffer[q + 1][k] * G[q + 1][k];
 		}
-		for (int k = 0; k < K; k++)
-		{
-			Y_tmp[0] = Y_tmp[0] + X_buffer[0][k] * G[0][k] + X_buffer[1][k] * G[1][k];
-			Y_tmp[M-1]=Y_tmp[M-1]+ X_buffer[M-1][k] * G[M-1][k] + X_buffer[M-2][k] * G[M-2][k];
-		}
-		for (int m = 0; m < M; m++)
-		{
-			Y[m][j] = Y_tmp[m];
-		}
-	}	
+		q = q + 2;
+	}
+	for (int k = 0; k < K; k++)
+	{
+		Y_tmp[0] = Y_tmp[0] + X_buffer[0][k] * G[0][k] + X_buffer[1][k] * G[1][k];
+		Y_tmp[M-1]=Y_tmp[M-1]+ X_buffer[M-1][k] * G[M-1][k] + X_buffer[M-2][k] * G[M-2][k];
+	}
+	for (int m = 0; m < M; m++)
+	{
+		Y[m][j] = Y_tmp[m];
+	}
+	
+	return D[j];
 	
 	if (temp1 != 0)
 	{
