@@ -34,6 +34,7 @@
     </None>
     <None Include="ReadMe.txt" />
     <None Include="prototipoMC.dat" />
+    <None Include="..\..\..\..\..\Desktop\prototipoMC.dat" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LEEffect.h">
