@@ -342,10 +342,12 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 }
 
 
-double* crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffer, double** G, double** G_adj, double** D, int K, int M, int N, int FrameD, int j)
+void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffer, int delay, double** E, double** G, double** G_adj, double** D, int K, int M, int N, int FrameD, int j)
 {
 	Ipp64f* temp1=0;
 	Ipp64f* Y_tmp = 0;
+	Ipp64f* temp2 = 0;
+	Ipp64f* e = 0;
 
 	if (temp1 == 0)
 	{
@@ -359,12 +361,25 @@ double* crossfilter(double** X, double** Y, double** X_buffer, double** delay_bu
 		ippsZero_64f(Y_tmp, M);
 	}
 
+	if (e == 0)
+	{
+		e = ippsMalloc_64f(M);
+		ippsZero_64f(e, M);
+	}
+
+	if (temp2 == 0)
+	{
+		temp2 = ippsMalloc_64f(delay);
+		ippsZero_64f(temp2, delay);
+	}
+
+
 
 	for (int m = 0; m < 2*M-1; m++)
 	{
 		// scorrimento del vettore X_buff e aggiornamento
 		ippsCopy_64f(X_buffer[m], temp1, FrameD);
-		ippsCopy_64f(temp1, X_buffer[m] + 1, FrameD - 1);
+		ippsCopy_64f(temp1, X_buffer[m] + 1, FrameD - 1);  //eccezione
 		X_buffer[m][0] = X[m][j];
 	}
 
@@ -388,9 +403,15 @@ double* crossfilter(double** X, double** Y, double** X_buffer, double** delay_bu
 	for (int m = 0; m < M; m++)
 	{
 		Y[m][j] = Y_tmp[m];
+		
+		ippsCopy_64f(delay_buffer[m], temp1, delay);
+		ippsCopy_64f(temp1, delay_buffer[m] + 1, delay);
+		delay_buffer[m][0] = D[m][j];
+		e[m] = delay_buffer[m][j] - Y_tmp[m];
+		E[m][j] = e[m];
 	}
 	
-	return D[j];
+
 	
 	if (temp1 != 0)
 	{
@@ -403,5 +424,16 @@ double* crossfilter(double** X, double** Y, double** X_buffer, double** delay_bu
 		ippsFree(Y_tmp);
 		Y_tmp = 0;
 	}
+
+	if (e != 0)
+	{
+		ippsFree(e);
+		e = 0;
+	}
 	
+	if (temp2 != 0)
+	{
+		ippsFree(temp2);
+		temp2 = 0;
+	}
 }
