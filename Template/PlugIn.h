@@ -67,10 +67,10 @@ public:
 private:
 
 	int FrameSize,SampleRate;
-	Ipp64f* p0, *P, *mu, *input_buffer,*y;
+	Ipp64f* p0, *P, *mu, *input_buffer,*y, *e;
 	char save_name[MAX_FILE_NAME_LENGTH];
-	int N, M, L, K, delay;
-	double** Hp, ** H, **F, **G, **G_adj, **delay_buffer, **D, **Y, **E, **X;
+	int N, M, L, K, delay,i;
+	double** Hp, ** H, **F, **G, **delay_buffer, **D, **Y, **X;
 	double** d_buffer, ** x_buffer, ** X_buffer, ** D_buffer, ** output_Y, ** output_D, ** output_E;
 	double step_size, beta, FrameD;
 

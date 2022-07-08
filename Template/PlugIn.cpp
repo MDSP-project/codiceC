@@ -27,7 +27,8 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	step_size = 0.0001; //Valore massimo dello step size per l'adattamento
 	beta = 0.99; // Peso per la stima della potenza in ogni banda
 	FrameD = FrameSize / M; // Dimensione Frame decimato
-
+	e = 0;
+	i = 0;
 }
 
 int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID ExtraInfo)
@@ -36,15 +37,31 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	double* InputData_x = ((double*)Input[0]->DataBuffer);
 	double* InputData_d = ((double*)Input[1]->DataBuffer);
 	double* OutputData = ((double*)Output[0]->DataBuffer);
+	//double* OutputDataD = ((double*)Output[1]->DataBuffer); 
 
 
 	analisi(InputData_x, InputData_d, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize);
+
 	for (int j = 0; j < FrameD; j++)
 	{
-		crossfilter(X, Y, X_buffer,delay_buffer,delay,E,G,G_adj,D,K,M,N,FrameD,j);
+		crossfilter(X, Y, X_buffer,delay_buffer,delay,e,G,D,K,M,N,FrameD,j);
+		if (i>0)
+		{
+			calculatemu(step_size, P, X, mu, M, beta, j);
+			adaptation(G, mu, e, X_buffer, K, M);
+			
+		}
+		
+	} 
+	
+	sintesi(F, output_Y, Y, M, N, FrameSize, y);
+	//sintesi(F, output_D, D, M, N, FrameSize,);
+
+	for (int n = 0; n <FrameSize; n++)
+	{
+		OutputData[n] = y[n] * 32768.0 * M;
 	}
-	
-	
+	i=1;
 	return COMPLETED;
 }
 
@@ -73,7 +90,11 @@ void __stdcall PlugIn::LEPlugin_Init()
 
 	}
 	
-	
+	if (e == 0)
+	{
+		e = ippsMalloc_64f(M);
+		ippsZero_64f(e, M);
+	}
 
 
 	if (y == 0)
@@ -116,15 +137,6 @@ void __stdcall PlugIn::LEPlugin_Init()
 		memset(G[i], 0.0, (K) * sizeof(double));
 	}
 
-
-	G_adj = new double* [M];
-	for (int i = 0; i < M; i++)
-	{
-		G_adj[i] = new double[K];
-		memset(G_adj[i], 0.0, (K) * sizeof(double));
-	}
-
-
 	delay_buffer = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
@@ -155,13 +167,6 @@ void __stdcall PlugIn::LEPlugin_Init()
 		memset(Y[i], 0.0, (FrameD) * sizeof(double));
 	}
 
-
-	E = new double* [M];		// Matrice per l'evoluzione dell'errore nel tempo
-	for (int i = 0; i < M; i++)
-	{
-		E[i] = new double[FrameD];
-		memset(E[i], 0.0, (FrameD) * sizeof(double));
-	}
 
 
 	d_buffer = new double* [M];		// Buffer in ingresso al banco di analisi del segnale di riferimento
@@ -242,10 +247,6 @@ void __stdcall PlugIn::LEPlugin_Delete()
 	delete[] G;
 
 	for (int i = 0; i < M; i++)
-		delete[] G_adj[i];
-	delete[] G_adj;
-
-	for (int i = 0; i < M; i++)
 		delete[] delay_buffer[i];
 	delete[] delay_buffer;
 
@@ -263,10 +264,6 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		delete[] Y[i];
 	delete[] Y;
 
-
-	for (int i = 0; i < M; i++)
-		delete[] E[i];
-	delete[] E;
 
 	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] X[i];
@@ -326,7 +323,11 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		mu = 0;
 	}
 
-
+	if (e != 0)
+	{
+		ippsFree(e);
+		e = 0;
+	}
 
 	if (y != 0)
 	{
@@ -342,15 +343,6 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		input_buffer = 0;
 	}
 
-
-	/*/    /Linee di ritardo
-	for (int i = 0; i < M; i++)
-		delete[] X_buff[i];
-	delete[] X_buff;
-
-	for (int i = 0; i < M; i++)
-		delete[] W_buff[i];
-	delete[] W_buff; */
 
 	
 }

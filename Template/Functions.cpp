@@ -2,7 +2,6 @@
 #include "Functions.h"
 
 
-
 void write_dat(char* name, double* data, int dim, char* save_name) {
 
 	char name_a[MAX_FILE_NAME_LENGTH];
@@ -253,6 +252,7 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 	{
 		d[n] = (double)InputData_d[n] / 32768.0;
 		x[n] = (double)InputData_x[n] / 32768.0;
+
 		for (int m = 0; m < 2*M-1 ; m++)
 		{
 		
@@ -342,17 +342,17 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 }
 
 
-void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffer, int delay, double** E, double** G, double** G_adj, double** D, int K, int M, int N, int FrameD, int j)
+void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffer, int delay, Ipp64f* e, double** G, double** D, int K, int M, int N, int FrameD, int j)
 {
 	Ipp64f* temp1=0;
 	Ipp64f* Y_tmp = 0;
 	Ipp64f* temp2 = 0;
-	Ipp64f* e = 0;
+	
 
 	if (temp1 == 0)
 	{
-		temp1 = ippsMalloc_64f(FrameD);
-		ippsZero_64f(temp1, FrameD);
+		temp1 = ippsMalloc_64f(K);
+		ippsZero_64f(temp1, K);
 	}
 
 	if (Y_tmp == 0)
@@ -361,25 +361,17 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffe
 		ippsZero_64f(Y_tmp, M);
 	}
 
-	if (e == 0)
-	{
-		e = ippsMalloc_64f(M);
-		ippsZero_64f(e, M);
-	}
-
 	if (temp2 == 0)
 	{
 		temp2 = ippsMalloc_64f(delay);
 		ippsZero_64f(temp2, delay);
 	}
 
-
-
-	for (int m = 0; m < 2*M-1; m++)
+	for (int m = 0; m < 2 * M - 1; m++)
 	{
 		// scorrimento del vettore X_buff e aggiornamento
-		ippsCopy_64f(X_buffer[m], temp1, FrameD);
-		ippsCopy_64f(temp1, X_buffer[m] + 1, FrameD - 1);  //eccezione
+		ippsCopy_64f(X_buffer[m], temp1,K);
+		ippsCopy_64f(temp1, X_buffer[m] + 1, K - 1); 
 		X_buffer[m][0] = X[m][j];
 	}
 
@@ -387,7 +379,7 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffe
 
 	int q = 2;
 
-	for (int m = 1; m < M-1; m++)
+	for (int m = 1; m < M - 1; m++)
 	{
 		for(int k=0; k<K; k++)
 		{
@@ -404,13 +396,11 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffe
 	{
 		Y[m][j] = Y_tmp[m];
 		
-		ippsCopy_64f(delay_buffer[m], temp1, delay);
-		ippsCopy_64f(temp1, delay_buffer[m] + 1, delay);
+		ippsCopy_64f(delay_buffer[m], temp2, delay);
+		ippsCopy_64f(temp2, delay_buffer[m] + 1, delay-1);
 		delay_buffer[m][0] = D[m][j];
-		e[m] = delay_buffer[m][j] - Y_tmp[m];
-		E[m][j] = e[m];
+		e[m] = delay_buffer[m][delay-1] - Y_tmp[m];
 	}
-	
 
 	
 	if (temp1 != 0)
@@ -424,12 +414,6 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffe
 		ippsFree(Y_tmp);
 		Y_tmp = 0;
 	}
-
-	if (e != 0)
-	{
-		ippsFree(e);
-		e = 0;
-	}
 	
 	if (temp2 != 0)
 	{
@@ -437,3 +421,144 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffe
 		temp2 = 0;
 	}
 }
+
+
+void calculatemu(double step_size, Ipp64f* P, double** X,double* mu, int M, double beta, int j)
+{
+	for (int m = 0; m < 2*M-1; m++)
+	{
+		P[m] = P[m] * beta + (1 - beta) * (abs(pow(X[m][j], 2)));
+	}
+	mu[0] = step_size / (P[0] + P[1]);
+	mu[2 * M - 2] = step_size / (P[2 * M - 2] + P[2 * M - 3]);
+	for (int m = 1; m < 2*M-2; m++)
+	{
+		mu[m] = step_size / (P[m - 1] + P[m] + P[m + 1]);
+	}
+}
+
+void adaptation(double** G, double* mu, double* e, double** X_buffer, int K, int M)
+{
+	double** G_adj = 0;
+	int q = 2;
+	G_adj = new double* [M];
+	for (int i = 0; i < M; i++)
+	{
+		G_adj[i] = new double[K];
+		memset(G_adj[i], 0.0, (K) * sizeof(double));
+	}
+
+	for (int m = 1; m < M-1; m++)
+	{
+		for (int k = 0; k < K; k++)
+		{
+			G_adj[m][k] = G[m][k] + mu[q] * e[m] * X_buffer[q][k] + mu[q - 1] * e[m - 1] * X_buffer[q - 1][k] + mu[q + 1] * e[m + 1] * X_buffer[q + 1][k];
+		}
+		q = q + 2;
+	}
+
+	for (int k = 0; k < K; k++)
+	{
+		G_adj[0][k] = G[0][k] + mu[0] * e[0] * X_buffer[0][k] + mu[1] * e[1] * X_buffer[1][k];
+		G_adj[M-1][k] = G[M-1][k] + mu[M-1] * e[M-1] * X_buffer[M-1][k] + mu[M-2] * e[M-2] * X_buffer[M-2][k];
+	}
+
+	for (int m = 0; m < M; m++)
+	{
+		ippsCopy_64f(G_adj[m], G[m], K);
+	}
+
+	for (int i = 0; i < M; i++)
+		delete[] G_adj[i];
+	delete[] G_adj;
+}
+
+void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesize, double* OutputData)
+{
+	double** interp = 0;
+	int i = 0;
+	Ipp64f* temp1= 0;
+	Ipp64f* Gw = 0;
+	Ipp64f* y = 0;
+
+	interp = new double* [M];
+	for (int i = 0; i < M; i++)
+	{
+		interp[i] = new double[Framesize];
+		memset(interp[i], 0.0, (Framesize) * sizeof(double));
+	}
+
+
+	if (temp1 == 0)
+	{
+		temp1 = ippsMalloc_64f(N);
+		ippsZero_64f(temp1, N);
+	}
+
+	if (Gw == 0)
+	{
+		Gw = ippsMalloc_64f(M);
+		ippsZero_64f(Gw, M);
+	}
+
+	if (y == 0)
+	{
+		y = ippsMalloc_64f(Framesize);
+		ippsZero_64f(y, Framesize);
+	}
+
+	for (int n = 0; n < Framesize; n++)
+	{
+		for (int m = 0; m < M; m++)
+		{
+			if ((n % M) == 0) 
+			{
+				interp[m][n] = Y[m][i]; //downsampling
+				i++;
+			}
+			else
+				interp[m][n] = 0; //upsampling
+		}
+
+		for (int m = 0; m < M; m++)
+		{
+			ippsCopy_64f(Output_Y[m], temp1, N);
+			ippsCopy_64f(temp1, Output_Y[m] + 1, N - 1);
+			Output_Y[m][0] = interp[m][n];
+
+			ippsDotProd_64f(F[m], Output_Y[m], N, &Gw[m]);
+		}
+
+		ippsSum_64f(Gw, M, &y[n]);
+		OutputData[n] = y[n] * 32768.0 * M;
+		
+	}	
+
+	for (int i = 0; i < M; i++)
+		delete[] interp[i];
+	delete[] interp;
+
+	if (temp1 != 0)
+	{
+		ippsFree(temp1);
+		temp1 = 0;
+	}
+
+	if (y != 0)
+	{
+		ippsFree(y);
+		y = 0;
+	}
+
+	if (Gw != 0)
+	{
+		ippsFree(Gw);
+		Gw = 0;
+	}
+
+
+
+}
+
+
+
