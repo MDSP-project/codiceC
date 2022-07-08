@@ -6,7 +6,7 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 {
 
 	LESetNumInput(2);
-	LESetNumOutput(1);
+	LESetNumOutput(2);
 	FrameSize = CBFunction(this,NUTS_GET_FS_SR,0,(LPVOID)AUDIOPROC);
 	SampleRate = CBFunction(this,NUTS_GET_FS_SR,1,(LPVOID)AUDIOPROC);	
 	p0 = 0;
@@ -37,7 +37,7 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	double* InputData_x = ((double*)Input[0]->DataBuffer);
 	double* InputData_d = ((double*)Input[1]->DataBuffer);
 	double* OutputData = ((double*)Output[0]->DataBuffer);
-	//double* OutputDataD = ((double*)Output[1]->DataBuffer); 
+	double* OutputDataD = ((double*)Output[1]->DataBuffer); 
 
 
 	analisi(InputData_x, InputData_d, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize);
@@ -54,13 +54,14 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 		
 	} 
 	
-	sintesi(F, output_Y, Y, M, N, FrameSize, y);
-	//sintesi(F, output_D, D, M, N, FrameSize,);
+	sintesi(F, output_Y, Y, M, N, FrameSize, OutputData);
+	sintesi(F, output_D, D, M, N, FrameSize,OutputDataD);
 
-	for (int n = 0; n <FrameSize; n++)
+	/*for (int n = 0; n <FrameSize; n++)
 	{
-		OutputData[n] = y[n] * 32768.0 * M;
-	}
+		OutputData[n] = y[n] *32768.0 * M;
+	}*/
+
 	i=1;
 	return COMPLETED;
 }

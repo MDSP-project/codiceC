@@ -473,13 +473,13 @@ void adaptation(double** G, double* mu, double* e, double** X_buffer, int K, int
 	delete[] G_adj;
 }
 
-void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesize, double* y)
+void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesize, double* OutputData)
 {
 	double** interp = 0;
 	int i = 0;
 	Ipp64f* temp1= 0;
 	Ipp64f* Gw = 0;
-	//Ipp64f* y = 0;
+	Ipp64f* y = 0;
 
 	interp = new double* [M];
 	for (int i = 0; i < M; i++)
@@ -514,10 +514,15 @@ void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesi
 			if ((n % M) == 0) 
 			{
 				interp[m][n] = Y[m][i]; //downsampling
-				i++;
+				if (m==15)
+				{
+					i = i + 1;
+				}
 			}
 			else
 				interp[m][n] = 0; //upsampling
+
+			
 		}
 
 		for (int m = 0; m < M; m++)
@@ -530,7 +535,7 @@ void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesi
 		}
 
 		ippsSum_64f(Gw, M, &y[n]);
-		//OutputData[n] = y[n] * 32768.0 * M;
+		OutputData[n] = y[n] * 32768.0 * M;
 		
 	}	
 
@@ -544,11 +549,11 @@ void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesi
 		temp1 = 0;
 	}
 
-	/*if (y != 0)
+	if (y != 0)
 	{
 		ippsFree(y);
 		y = 0;
-	}*/
+	}
 
 	if (Gw != 0)
 	{
