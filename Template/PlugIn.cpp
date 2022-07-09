@@ -40,7 +40,7 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	double* OutputDataD = ((double*)Output[1]->DataBuffer); 
 
 
-	analisi(InputData_x, InputData_d, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize);
+	analisi(InputData_d, InputData_x, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize);
 
 	for (int j = 0; j < FrameD; j++)
 	{
