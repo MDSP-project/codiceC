@@ -62,7 +62,7 @@ void cos_p(double* p0, double** H, int M, int N) {
 	for (int i = 0; i < M; i++) {
 		for (int j = 0; j < N; j++) {
 
-			tmp[j] = 2.0 * cos((IPP_PI / ((double)M)) * ((double)i + 0.5) * ((double)j - (((double)N - 1.0) / 2.0)) + (pow(-1.0, (double)i)) * (IPP_PI / 4.0));
+			tmp[j] = 2.0 * cos((IPP_PI / ((double)M)) * ((double)i + 0.5) * ((double)j - (((double)N - 1.0) / 2.0)) - (pow(-1.0, (double)i)) * (IPP_PI / 4.0));
 		}
 		ippsMul_64f(p0, tmp, H[i], N);
 	}
