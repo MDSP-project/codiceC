@@ -167,14 +167,10 @@ void petr_cos_h(double* p0, double** H, int M, int N) {
 
 	for (int n = 0; n < 2 * M -1; n++) {
 
-
 		q00[n] = 2 * q0_tmp[n];
 		q01[n] = ((double)M - 2) * (double)n * q0_tmp[n];
 		H[0][n] = H[0][n] + q00[n];
 		H[2*M-2][n] = H[2 * M - 2][n] + q01[n];
-
-
-
 
 	}
 
@@ -200,53 +196,9 @@ void petr_cos_h(double* p0, double** H, int M, int N) {
 
 
 
-void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double** X_buffer, double** D, double** X, double** H, double** Hp, int M, int N, int FrameSize) {
-	
-	Ipp64f* d = 0;
-	Ipp64f* x = 0;
-	double* temp1 = 0;
-	double* temp2 = 0;
-	double* U1 = 0;
-	double* U2 = 0;
+void analisi(double* InputData_d, double* InputData_x, double* x, double *d, double** D_buffer, double** X_buffer, double** D, double** X, double** H, double** Hp, int M, int N, int FrameSize, double* temp1, double* temp2, double* U1, double* U2) {
+
 	int i = 0;
-
-
-
-	if (d == 0)
-	{
-		d = ippsMalloc_64f(FrameSize);
-		ippsZero_64f(d, FrameSize);
-	}
-
-	if (x == 0)
-	{
-		x = ippsMalloc_64f(FrameSize);
-		ippsZero_64f(x, FrameSize);
-	}
-
-	if (temp1 == 0)
-	{
-		temp1 = ippsMalloc_64f(2*N-1);
-		ippsZero_64f(temp1, 2*N-1);
-	}
-
-	if (temp2 == 0)
-	{
-		temp2 = ippsMalloc_64f(N);
-		ippsZero_64f(temp2, N);
-	}
-
-	if (U1 == 0)
-	{
-		U1 = ippsMalloc_64f(2 * M - 1);
-		ippsZero_64f(U1, 2 * M - 1);
-	}
-
-	if (U2 == 0)
-	{
-		U2 = ippsMalloc_64f(M);
-		ippsZero_64f(U2, M);
-	}
 
 	for (int n = 0; n < FrameSize; n++)
 	{
@@ -292,7 +244,6 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 			
 		    }
 
-		
 		}
 		
 		if ((n % M) == 0)
@@ -302,70 +253,15 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 		}
 	}
 
-
-	if (d != 0)
-	{
-		ippsFree(d);
-		d = 0;
-	}
-
-	if (x != 0)
-	{
-		ippsFree(x);
-		x = 0;
-	}
-
-	if (temp1 != 0)
-	{
-		ippsFree(temp1);
-		temp1 = 0;
-	}
-
-	if (temp2 != 0)
-	{
-		ippsFree(temp2);
-		temp2 = 0;
-	}
-
-	if (U1 != 0)
-	{
-		ippsFree(U1);
-		U1 = 0;
-	}
-	
-	if (U2 != 0)
-	{
-		ippsFree(U2);
-		U2 = 0;
-	}
-
 }
 
 
-void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffer, int delay, Ipp64f* e, double** G, double** D, int K, int M, int N, int FrameD, int j)
+void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffer, int delay, Ipp64f* e, double** G, double** D, int K, int M, int N, int FrameD, int j, double* temp1, double* Y_tmp, double* temp2)
 {
-	Ipp64f* temp1=0;
-	Ipp64f* Y_tmp = 0;
-	Ipp64f* temp2 = 0;
-	
 
-	if (temp1 == 0)
-	{
-		temp1 = ippsMalloc_64f(K);
-		ippsZero_64f(temp1, K);
-	}
-
-	if (Y_tmp == 0)
-	{
-		Y_tmp = ippsMalloc_64f(M);
-		ippsZero_64f(Y_tmp, M);
-	}
-
-	if (temp2 == 0)
-	{
-		temp2 = ippsMalloc_64f(delay);
-		ippsZero_64f(temp2, delay);
-	}
+	ippsZero_64f(temp1, K);
+	ippsZero_64f(Y_tmp, M);
+	ippsZero_64f(temp2, delay);
 
 	for (int m = 0; m < 2 * M - 1; m++)
 	{
@@ -402,24 +298,6 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffe
 		e[m] = delay_buffer[m][delay-1] - Y_tmp[m];
 	}
 
-	
-	if (temp1 != 0)
-	{
-		ippsFree(temp1);
-		temp1 = 0;
-	}
-
-	if (Y_tmp != 0)
-	{
-		ippsFree(Y_tmp);
-		Y_tmp = 0;
-	}
-	
-	if (temp2 != 0)
-	{
-		ippsFree(temp2);
-		temp2 = 0;
-	}
 }
 
 
@@ -437,17 +315,13 @@ void calculatemu(double step_size, Ipp64f* P, double** X,double* mu, int M, doub
 	}
 }
 
-void adaptation(double** G, double* mu, double* e, double** X_buffer, int K, int M)
+void adaptation(double** G,double** G_adj, double* mu, double* e, double** X_buffer, int K, int M)
 {
-	double** G_adj = 0;
 	int q = 2;
-	G_adj = new double* [M];
-	for (int i = 0; i < M; i++)
-	{
-		G_adj[i] = new double[K];
-		memset(G_adj[i], 0.0, (K) * sizeof(double));
+	for (int m = 0; m < M; m++) {
+		memset(G_adj[m], 0.0, (K) * sizeof(double));
 	}
-
+	
 	for (int m = 1; m < M-1; m++)
 	{
 		for (int k = 0; k < K; k++)
@@ -468,43 +342,18 @@ void adaptation(double** G, double* mu, double* e, double** X_buffer, int K, int
 		ippsCopy_64f(G_adj[m], G[m], K);
 	}
 
-	for (int i = 0; i < M; i++)
-		delete[] G_adj[i];
-	delete[] G_adj;
 }
 
-void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesize, double* OutputData)
+void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesize, double* OutputData,Ipp64f* y, double** interp, Ipp64f* temp1, Ipp64f* Gw)
 {
-	double** interp = 0;
 	int i = 0;
-	Ipp64f* temp1= 0;
-	Ipp64f* Gw = 0;
-	Ipp64f* y = 0;
+	ippsZero_64f(y, Framesize);
+	ippsZero_64f(temp1, N);
+	ippsZero_64f(Gw, M);
 
-	interp = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		interp[i] = new double[Framesize];
 		memset(interp[i], 0.0, (Framesize) * sizeof(double));
-	}
-
-
-	if (temp1 == 0)
-	{
-		temp1 = ippsMalloc_64f(N);
-		ippsZero_64f(temp1, N);
-	}
-
-	if (Gw == 0)
-	{
-		Gw = ippsMalloc_64f(M);
-		ippsZero_64f(Gw, M);
-	}
-
-	if (y == 0)
-	{
-		y = ippsMalloc_64f(Framesize);
-		ippsZero_64f(y, Framesize);
 	}
 
 	for (int n = 0; n < Framesize; n++)
@@ -538,30 +387,6 @@ void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesi
 		OutputData[n] = y[n] * 32768.0 * M;
 		
 	}	
-
-	for (int i = 0; i < M; i++)
-		delete[] interp[i];
-	delete[] interp;
-
-	if (temp1 != 0)
-	{
-		ippsFree(temp1);
-		temp1 = 0;
-	}
-
-	if (y != 0)
-	{
-		ippsFree(y);
-		y = 0;
-	}
-
-	if (Gw != 0)
-	{
-		ippsFree(Gw);
-		Gw = 0;
-	}
-
-
 
 }
 

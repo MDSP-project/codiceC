@@ -67,12 +67,19 @@ public:
 private:
 
 	int FrameSize,SampleRate;
-	Ipp64f* p0, *P, *mu, *input_buffer,*y, *e;
+	// Vettori principali del sistema
+	Ipp64f* p0, *P, *mu, *x, *d, *y, *e;
 	char save_name[MAX_FILE_NAME_LENGTH];
 	int N, M, L, K, delay,i;
 	double** Hp, ** H, **F, **G, **delay_buffer, **D, **Y, **X;
 	double** d_buffer, ** x_buffer, ** X_buffer, ** D_buffer, ** output_Y, ** output_D, ** output_E;
 	double step_size, beta, FrameD;
 
+	// Variabili di appoggio per le funzioni
+	double* tempA1, * tempA2, * U1, * U2;	// analisi
+	double* tempC1, * tempC2, * Y_tmp;		// crosstalk
+	double** G_adj;		// adaptation
+	double** interp;	// sintesi
+	Ipp64f* tempS1, * Gw;	// sintesi
 
 };

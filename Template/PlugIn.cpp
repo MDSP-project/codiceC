@@ -8,27 +8,50 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	LESetNumInput(2);
 	LESetNumOutput(2);
 	FrameSize = CBFunction(this,NUTS_GET_FS_SR,0,(LPVOID)AUDIOPROC);
-	SampleRate = CBFunction(this,NUTS_GET_FS_SR,1,(LPVOID)AUDIOPROC);	
-	p0 = 0;
-	P = 0;
-	mu = 0;
-	//x = 0;
-	y = 0;
-	//d = 0;
-	input_buffer = 0;
+	SampleRate = CBFunction(this,NUTS_GET_FS_SR,1,(LPVOID)AUDIOPROC);
+
+	// Inizializzazione dei vari puntatori
+	p0 = 0;				// Vettore dei tappi del filtro prototipo
+	P = 0;				// Vettore delle potenze nelle varie sottobande
+	mu = 0;				// Vettore degli step-size per ogni sottobanda
+	e = 0;				// Vettore degli errori
+	
+	x = 0;				// Vettore dell'ingresso
+	d = 0;				// Vettore del segnale di riferimento
+	y = 0;				// Vettore di uscita
+
+	// Vettori e Matrici di appoggio per le funzioni
+	tempA1 = 0;	// analisi
+	tempA2 = 0;	// analisi
+	U1 = 0;		// analisi
+	U2 = 0;		// analisi
+
+	tempC1 = 0; // crosstalk
+	tempC2 = 0; // crosstalk
+	Y_tmp = 0;	// crosstalk
+	
+	G_adj = 0;	// adaptation
+
+	interp = 0;	// sintesi
+	tempS1 = 0;	// sintesi
+	Gw = 0;		// sintesi
+
+
 	memset(save_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
-	strcpy(save_name, "C:\\Users\\alleg\\Desktop\\prototipoMC.dat");
-	N = 128;
-	M = 16;
-	L = 128;
+	strcpy(save_name, "C:\\Users\\Gregorio\\Documents\\MATLAB\\UNIVPM\\MDSP\\SACC_Codice Matlab\\prototipoMC.dat");
+
+	N = 128;			// Numero di tappi del filtro prototipo
+	M = 16;				// Numero di sottobande
+	L = 128;			// Stima della dimensione del "System Unknown" 
+
 	//Inizializzazione dei Filtri Adattivi e del vettore delle Potenze
-	K = (N + L) / M + 1; // Numero di tappi per ogni filtro adattivo
-	delay = N / M; // Valore del ritardo
-	step_size = 0.0001; //Valore massimo dello step size per l'adattamento
-	beta = 0.99; // Peso per la stima della potenza in ogni banda
+	K = (N + L) / M + 1;	// Numero di tappi per ogni filtro adattivo
+	delay = N / M;			// Valore del ritardo
+	step_size = 0.0001;  // static_cast<double>(0.1) / K; //Valore massimo dello step size per l'adattamento
+	beta = 0.99;			// Peso per la stima della potenza in ogni banda
 	FrameD = FrameSize / M; // Dimensione Frame decimato
-	e = 0;
-	i = 0;
+	
+	i = 0;					// Variabile di appoggio per saltare l'adattamento nel primo frame
 }
 
 int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID ExtraInfo)
@@ -39,91 +62,164 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	double* OutputData = ((double*)Output[0]->DataBuffer);
 	double* OutputDataD = ((double*)Output[1]->DataBuffer); 
 
-
-	analisi(InputData_d, InputData_x, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize);
+	// Analisi in sottobande sia del segnale di riferimento d(n) sia del segnale in ingresso x(n)
+	analisi(InputData_d, InputData_x, x, d, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize,tempA1, tempA2, U1, U2);
 
 	for (int j = 0; j < FrameD; j++)
 	{
-		crossfilter(X, Y, X_buffer,delay_buffer,delay,e,G,D,K,M,N,FrameD,j);
-		if (i>0)
+		// Calcolo delle uscite e dell'errore in ogni sottobanda
+		crossfilter(X, Y, X_buffer, delay_buffer, delay, e, G, D, K, M, N, FrameD, j,tempC1, Y_tmp, tempC2);
+		
+		if (i>0) // Saltiamo il primo frame per l'adattamento
 		{
+			// Normalizzazione dei valori degli step-size in base alla stima della potenza del segnale
 			calculatemu(step_size, P, X, mu, M, beta, j);
-			adaptation(G, mu, e, X_buffer, K, M);
-			
+			// Adattamento dei filtri G_k(z)
+			adaptation(G, G_adj, mu, e, X_buffer, K, M);	
 		}
 		
 	} 
-	
-	sintesi(F, output_Y, Y, M, N, FrameSize, OutputData);
-	sintesi(F, output_D, D, M, N, FrameSize,OutputDataD);
-
-	/*for (int n = 0; n <FrameSize; n++)
-	{
-		OutputData[n] = y[n] *32768.0 * M;
-	}*/
+	// Sintesi del segnale di riferimento e dell'uscita dai filtri adattivi
+	sintesi(F, output_Y, Y, M, N, FrameSize, OutputData, y, interp, tempS1, Gw);
+	sintesi(F, output_D, D, M, N, FrameSize, OutputDataD, y, interp, tempS1, Gw);
 
 	i=1;
+
 	return COMPLETED;
 }
 
 void __stdcall PlugIn::LEPlugin_Init()
 {
-	if (p0 == 0) {
-		p0 = ippsMalloc_64f(N);
-		ippsZero_64f(p0,N);
+	// Inizializzazione dei vettori necessari al funzionamento del sistema
 
-	}
-	
-	if (P == 0) {
-		P = ippsMalloc_64f(2 * M - 1);
-		ippsSet_64f(1.0, P, 2 * M - 1);
-	}
-	 
-	if (mu == 0) {
-		mu = ippsMalloc_64f(2 * M - 1);
-		ippsZero_64f(mu, 2 * M - 1); // Vettore degli step size per ogni banda settato a 0
-	}
-	
-	
-	if (input_buffer == 0) {
-		input_buffer = ippsMalloc_64f(L);	//Buffer in ingresso al "System Unknown"
-		ippsZero_64f(input_buffer,L);
-
-	}
-	
-	if (e == 0)
+	if (d == 0)		// Segnale di Riferimento d(n)
 	{
-		e = ippsMalloc_64f(M);
-		ippsZero_64f(e, M);
+		d = ippsMalloc_64f(FrameSize);
+		ippsZero_64f(d, FrameSize);
 	}
 
-
-	if (y == 0)
+	if (x == 0)		// Segnale di ingresso x(n)
+	{
+		x = ippsMalloc_64f(FrameSize);
+		ippsZero_64f(x, FrameSize);
+	}
+	
+	if (y == 0)	
 	{
 		y = ippsMalloc_64f(FrameSize);
 		ippsZero_64f(y, FrameSize);
 	}
 	
 	
+	if (p0 == 0) {		// Vettore contenente i tappi del filtro prototipo
+		p0 = ippsMalloc_64f(N);			
+		ippsZero_64f(p0,N);			
 
+	}
+	
+	if (P == 0) {		// Vettore delle potenze in ogni sottobanda, inizializzato a 1.0
+		P = ippsMalloc_64f(2 * M - 1);
+		ippsSet_64f(1.0, P, 2 * M - 1);
+	}
+	 
+	if (mu == 0) {		// Vettore degli step size per ogni banda, inizializzato a 0
+		mu = ippsMalloc_64f(2 * M - 1);
+		ippsZero_64f(mu, 2 * M - 1); 
+	}
+	
+	if (e == 0)			// Vettore degli errori in ogni sottobanda
+	{
+		e = ippsMalloc_64f(M);
+		ippsZero_64f(e, M);			
+	}
 
-	read_dat(save_name, p0, N);
+	// Allocazione dei vettori di appoggio necessari alle funzioni
 
-	H = new double* [M];
+	if (tempA1 == 0)	// analisi
+	{
+		tempA1 = ippsMalloc_64f(2 * N - 1);
+		ippsZero_64f(tempA1, 2 * N - 1);
+	}
+
+	if (tempA2 == 0)	// analisi
+	{
+		tempA2 = ippsMalloc_64f(N);
+		ippsZero_64f(tempA2, N);
+	}
+
+	if (U1 == 0)		// analisi
+	{
+		U1 = ippsMalloc_64f(2 * M - 1);
+		ippsZero_64f(U1, 2 * M - 1);
+	}
+
+	if (U2 == 0)		// analisi
+	{
+		U2 = ippsMalloc_64f(M);
+		ippsZero_64f(U2, M);
+	}
+
+	if (tempC1 == 0)	// crosstalk
+	{
+		tempC1 = ippsMalloc_64f(K);
+		ippsZero_64f(tempC1, K);
+	}
+
+	if (Y_tmp == 0)		// crosstalk
+	{
+		Y_tmp = ippsMalloc_64f(M);
+		ippsZero_64f(Y_tmp, M);
+	}
+
+	if (tempC2 == 0)	// crosstalk
+	{
+		tempC2 = ippsMalloc_64f(delay);
+		ippsZero_64f(tempC2, delay);
+	}
+
+	G_adj = new double* [M];	// adaptation
+	for (int i = 0; i < M; i++)
+	{
+		G_adj[i] = new double[K];
+		memset(G_adj[i], 0.0, (K) * sizeof(double));
+	}
+
+	interp = new double* [M];	// sintesi
+	for (int i = 0; i < M; i++)
+	{
+		interp[i] = new double[FrameSize];
+		memset(interp[i], 0.0, (FrameSize) * sizeof(double));
+	}
+
+	if (tempS1 == 0)		// Sintesi
+	{
+		tempS1 = ippsMalloc_64f(N);
+		ippsZero_64f(tempS1, N);
+	}
+
+	if (Gw == 0)		// Sintesi
+	{
+		Gw = ippsMalloc_64f(M);
+		ippsZero_64f(Gw, M);
+	}
+
+	// Inizializzazione delle varie Matrici necessarie al funzionamento del sistema
+	H = new double* [M];				// Banco di Analisi
 	for (int i = 0; i < M; i++)
 	{
 		H[i] = new double[N];
-		memset(H[i], 0.0, (N) * sizeof(double));
+		memset(H[i], 0.0, (N) * sizeof(double));	
 	}
-	F = new double* [M];
+
+	F = new double* [M];				// Banco di Sintesi
 	for (int i = 0; i < M ; i++)
 	{
 		F[i] = new double[N];
-		memset(F[i], 0.0, (N) * sizeof(double));
+		memset(F[i], 0.0, (N) * sizeof(double));	
 	}
 
 
-	Hp = new double* [2*M -1];
+	Hp = new double* [2*M -1];			// Banco di Analisi della Petraglia
 	for (int i = 0; i < 2 * M - 1; i++)
 	{
 		Hp[i] = new double[2*N -1];
@@ -131,18 +227,18 @@ void __stdcall PlugIn::LEPlugin_Init()
 	}
 
 
-	G = new double* [2*M-1];
+	G = new double* [2*M-1];			// Banco dei filtri adattivi G_k(z)
 	for (int i = 0; i < 2*M-1; i++)
 	{
 		G[i] = new double[K];
-		memset(G[i], 0.0, (K) * sizeof(double));
+		memset(G[i], 0.0, (K) * sizeof(double));	
 	}
 
-	delay_buffer = new double* [M];
+	delay_buffer = new double* [M];		// Buffer del ritardo
 	for (int i = 0; i < M; i++)
 	{
 		delay_buffer[i] = new double[delay];
-		memset(delay_buffer[i], 0.0, (delay) * sizeof(double));
+		memset(delay_buffer[i], 0.0, (delay) * sizeof(double)); 
 	}
 
 
@@ -154,23 +250,21 @@ void __stdcall PlugIn::LEPlugin_Init()
 	}
 	
 
-	D = new double* [M];		// Segnale di riferimento in ogni banda
+	D = new double* [M];				// Segnale di riferimento in ogni banda
 	for (int i = 0; i < M ; i++)
 	{
 		D[i] = new double[FrameD];
 		memset(D[i], 0.0, (FrameD) * sizeof(double));
 	}
 
-	Y = new double* [M];		// Uscita dai filtri adattivi in  ogni banda
+	Y = new double* [M];				// Uscita dai filtri adattivi in  ogni banda
 	for (int i = 0; i < M; i++)
 	{
 		Y[i] = new double[FrameD];
 		memset(Y[i], 0.0, (FrameD) * sizeof(double));
 	}
 
-
-
-	d_buffer = new double* [M];		// Buffer in ingresso al banco di analisi del segnale di riferimento
+	d_buffer = new double* [M];			// Buffer in ingresso al banco di analisi del segnale di riferimento
 	for (int i = 0; i < M; i++)
 	{
 		d_buffer[i] = new double[N];
@@ -191,16 +285,15 @@ void __stdcall PlugIn::LEPlugin_Init()
 		X_buffer[i] = new double[K];
 		memset(X_buffer[i], 0.0, (K) * sizeof(double));
 	}
-
-	D_buffer = new double* [M];		// Buffer in ingresso al banco di filtri adattivi
+	
+	D_buffer = new double* [M];				
 	for (int i = 0; i < M; i++)
 	{
 		D_buffer[i] = new double[N];
 		memset(D_buffer[i], 0.0, (N) * sizeof(double));
 	}
 
-
-	output_Y = new double* [M];		// Buffer in ingresso al banco di sintesi del sistema adattivo
+	output_Y = new double* [M];				// Buffer in ingresso al banco di sintesi del sistema adattivo
 	for (int i = 0; i < M; i++)
 	{
 		output_Y[i] = new double[N];
@@ -208,7 +301,7 @@ void __stdcall PlugIn::LEPlugin_Init()
 	}
 
 
-	output_D = new double* [M];		// Buffer in ingresso al banco di sintesi del riferimento
+	output_D = new double* [M];				// Buffer in ingresso al banco di sintesi del riferimento
 	for (int i = 0; i < M; i++)
 	{
 		output_D[i] = new double[N];
@@ -216,20 +309,19 @@ void __stdcall PlugIn::LEPlugin_Init()
 	}
 
 
-	output_E = new double* [M];		// Buffer in ingresso al banco di sintesi per l'errore
+	output_E = new double* [M];				// Buffer in ingresso al banco di sintesi per l'errore
 	for (int i = 0; i < M; i++)
 	{
 		output_E[i] = new double[N];
 		memset(output_E[i], 0.0, (N) * sizeof(double));
 	}
-		
 	
-
-	petr_cos_h(p0,Hp, M,  N);
-	cos_h(p0, H,  M,  N);
-	cos_p(p0, F, M,  N);
-
-
+	// Lettura dei tappi del filtro prototipo progettato in MatLab e salvato in "prototipoMC.dat"
+	read_dat(save_name, p0, N);
+	// Progettazione dei banchi di analisi, analisi/Petraglia e sintesi
+	petr_cos_h(p0,Hp, M,  N);		// Banco di analisi della Petraglia
+	cos_h(p0, H,  M,  N);			// Banco di analisi
+	cos_p(p0, F, M,  N);			// Banco di sintesi
 
 }
 
@@ -254,7 +346,6 @@ void __stdcall PlugIn::LEPlugin_Delete()
 	for (int i = 0; i < 2*M - 1; i++)
 		delete[] Hp[i];
 	delete[] Hp;
-
 
 
 	for (int i = 0; i < M; i++)
@@ -303,10 +394,6 @@ void __stdcall PlugIn::LEPlugin_Delete()
 	delete[] output_E;
 
 
-
-	
-
-
 	if (p0 != 0)
 	{
 		ippsFree(p0);
@@ -330,22 +417,88 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		e = 0;
 	}
 
+	if (d != 0)
+	{
+		ippsFree(d);
+		d = 0;
+	}
+
+	if (x != 0)
+	{
+		ippsFree(x);
+		x = 0;
+	}
+
 	if (y != 0)
 	{
 		ippsFree(y);
 		y = 0;
 	}
-
 	
+	// Variabili di appoggio per le funzioni
 
-	if (input_buffer != 0)
+	if (tempA1 != 0)		// analisi
 	{
-		ippsFree(input_buffer);
-		input_buffer = 0;
+		ippsFree(tempA1);
+		tempA1 = 0;
 	}
 
+	if (tempA2 != 0)		// analisi
+	{
+		ippsFree(tempA2);
+		tempA2 = 0;
+	}
 
-	
+	if (U1 != 0)			// analisi
+	{
+		ippsFree(U1);
+		U1 = 0;
+	}
+
+	if (U2 != 0)			// analisi
+	{
+		ippsFree(U2);
+		U2 = 0;
+	}
+
+	if (tempC1 != 0)		// crosstalk
+	{
+		ippsFree(tempC1);
+		tempC1 = 0;
+	}
+
+	if (Y_tmp != 0)			// crosstalk
+	{
+		ippsFree(Y_tmp);
+		Y_tmp = 0;
+	}
+
+	if (tempC2 != 0)			// crosstalk
+	{
+		ippsFree(tempC2);
+		tempC2 = 0;
+	}
+
+	for (int i = 0; i < M; i++)	// adaptation
+		delete[] G_adj[i];
+	delete[] G_adj;
+
+
+	for (int i = 0; i < M; i++) // sintesi
+		delete[] interp[i];
+	delete[] interp;
+
+	if (tempS1 != 0)			// sintesi
+	{
+		ippsFree(tempS1);
+		tempS1 = 0;
+	}
+
+	if (Gw != 0)				// sintesi
+	{
+		ippsFree(Gw);
+		Gw = 0;
+	}
 }
 
 PlugIn::~PlugIn(void)
