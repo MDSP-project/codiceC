@@ -79,8 +79,8 @@ void petr_cos_h(double* p0, double** H, int M, int N) {
 	Questa funzione effettua la modulazione coseno del filtro prototipo p0,
 	per generare il banco di analisi secondo lo schema della Petraglia.
 
-	M è il numero di bande
-	N è la dimensione nel tempo
+	M ï¿½ il numero di bande
+	N ï¿½ la dimensione nel tempo
 	*/
 	Ipp64f* q1_re, *q2_re, *q1_im, *q2_im, * q0_tmp, *p0_tmp, *q00, *q01, *phase1, *phase2;
 	Ipp8u* pBuffer;
@@ -192,9 +192,6 @@ void petr_cos_h(double* p0, double** H, int M, int N) {
 	ippsFree(q01);
  	ippsFree(phase1);
 	ippsFree(phase2);
-
-	
-	
 
 }
 
@@ -560,9 +557,6 @@ void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesi
 		ippsFree(Gw);
 		Gw = 0;
 	}
-
-
-
 }
 
 

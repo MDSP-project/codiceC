@@ -15,6 +15,8 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	mu = 0;
 	y = 0;
 	input_buffer = 0;
+	e = 0;
+	i = 0;
 	memset(save_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
 	strcpy(save_name, "C:\\Users\\user\\Desktop\\prototipoMC.dat");
 	N = 256;  // lunghezza filtro prototipo
@@ -22,8 +24,6 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	L = 256;  // lunghezza filtro incognito
 	step_size = 0.0001; //Valore massimo dello step size per l'adattamento
 	beta = 0.99; // Peso per la stima della potenza in ogni banda
-	e = 0;
-	i = 0;
 }
 
 int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID ExtraInfo)
@@ -35,7 +35,7 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	double* OutputDataD = ((double*)Output[1]->DataBuffer); 
 
 
-	analisi(InputData_d, InputData_x, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize);
+	analisi(InputData_d, InputData_x, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize);   //Funzione blocchi di analisi
 
 	for (int j = 0; j < FrameD; j++)
 	{
@@ -49,9 +49,11 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 		
 	} 
 	
-	sintesi(F, output_Y, Y, M, N, FrameSize, OutputData);
+	sintesi(F, output_Y, Y, M, N, FrameSize, OutputData);    //Funzione blocchi di sintesi
 	sintesi(F, output_D, D, M, N, FrameSize,OutputDataD);
-	i=1;
+
+	i=1;  // dopo il primo frame adatto i filtri G
+
 	return COMPLETED;
 }
 
@@ -65,7 +67,6 @@ void __stdcall PlugIn::LEPlugin_Init()
 	if (p0 == 0) {
 		p0 = ippsMalloc_64f(N);
 		ippsZero_64f(p0,N);
-
 	}
 	
 	if (P == 0) {
@@ -82,26 +83,17 @@ void __stdcall PlugIn::LEPlugin_Init()
 	if (input_buffer == 0) {
 		input_buffer = ippsMalloc_64f(L);	//Buffer in ingresso al "System Unknown"
 		ippsZero_64f(input_buffer,L);
-
 	}
 	
-	if (e == 0)
-	{
+	if (e == 0){
 		e = ippsMalloc_64f(M);
 		ippsZero_64f(e, M);
 	}
 
-
-	if (y == 0)
-	{
+	if (y == 0){
 		y = ippsMalloc_64f(FrameSize);
 		ippsZero_64f(y, FrameSize);
 	}
-	
-	
-
-
-	read_dat(save_name, p0, N);
 
 	H = new double* [M];
 	for (int i = 0; i < M; i++)
@@ -109,6 +101,7 @@ void __stdcall PlugIn::LEPlugin_Init()
 		H[i] = new double[N];
 		memset(H[i], 0.0, (N) * sizeof(double));
 	}
+
 	F = new double* [M];
 	for (int i = 0; i < M ; i++)
 	{
@@ -116,14 +109,12 @@ void __stdcall PlugIn::LEPlugin_Init()
 		memset(F[i], 0.0, (N) * sizeof(double));
 	}
 
-
 	Hp = new double* [2*M -1];
 	for (int i = 0; i < 2 * M - 1; i++)
 	{
 		Hp[i] = new double[2*N -1];
 		memset(Hp[i], 0.0, (2*N-1) * sizeof(double));
 	}
-
 
 	G = new double* [2*M-1];
 	for (int i = 0; i < 2*M-1; i++)
@@ -139,14 +130,12 @@ void __stdcall PlugIn::LEPlugin_Init()
 		memset(delay_buffer[i], 0.0, (delay) * sizeof(double));
 	}
 
-
 	X = new double* [2 * M - 1];		// Ingresso ai filtri adattivi per ogni banda
 	for (int i = 0; i < 2 * M - 1; i++)
 	{
 		X[i] = new double[FrameD];
 		memset(X[i], 0.0, (FrameD) * sizeof(double));
 	}
-	
 
 	D = new double* [M];		// Segnale di riferimento in ogni banda
 	for (int i = 0; i < M ; i++)
@@ -162,8 +151,6 @@ void __stdcall PlugIn::LEPlugin_Init()
 		memset(Y[i], 0.0, (FrameD) * sizeof(double));
 	}
 
-
-
 	d_buffer = new double* [M];		// Buffer in ingresso al banco di analisi del segnale di riferimento
 	for (int i = 0; i < M; i++)
 	{
@@ -177,7 +164,6 @@ void __stdcall PlugIn::LEPlugin_Init()
 		x_buffer[i] = new double[2 * N - 1];
 		memset(x_buffer[i], 0.0, (2 * N - 1) * sizeof(double));
 	}
-
 
 	X_buffer = new double* [2 * M - 1];		// Buffer in ingresso al banco di filtri adattivi
 	for (int i = 0; i < 2 * M - 1; i++)
@@ -193,14 +179,12 @@ void __stdcall PlugIn::LEPlugin_Init()
 		memset(D_buffer[i], 0.0, (N) * sizeof(double));
 	}
 
-
 	output_Y = new double* [M];		// Buffer in ingresso al banco di sintesi del sistema adattivo
 	for (int i = 0; i < M; i++)
 	{
 		output_Y[i] = new double[N];
 		memset(output_Y[i], 0.0, (N) * sizeof(double));
 	}
-
 
 	output_D = new double* [M];		// Buffer in ingresso al banco di sintesi del riferimento
 	for (int i = 0; i < M; i++)
@@ -209,7 +193,6 @@ void __stdcall PlugIn::LEPlugin_Init()
 		memset(output_D[i], 0.0, (N) * sizeof(double));
 	}
 
-
 	output_E = new double* [M];		// Buffer in ingresso al banco di sintesi per l'errore
 	for (int i = 0; i < M; i++)
 	{
@@ -217,13 +200,12 @@ void __stdcall PlugIn::LEPlugin_Init()
 		memset(output_E[i], 0.0, (N) * sizeof(double));
 	}
 		
-	
 
-	petr_cos_h(p0,Hp, M,  N);
-	cos_h(p0, H,  M,  N);
-	cos_p(p0, F, M,  N);
+	read_dat(save_name, p0, N);  // funzione per l'importazione del filtro prototipo
 
-
+	petr_cos_h(p0,Hp, M,  N);   // funzione che genera la matrice di filtri del banco petraglia
+	cos_h(p0, H,  M,  N);       // funzione che genera la matrice di filtri di analisi
+	cos_p(p0, F, M,  N);        // funzione che genera la matrice di filtri di sintesi
 
 }
 
@@ -249,8 +231,6 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		delete[] Hp[i];
 	delete[] Hp;
 
-
-
 	for (int i = 0; i < M; i++)
 		delete[] D[i];
 	delete[] D;
@@ -259,11 +239,9 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		delete[] Y[i];
 	delete[] Y;
 
-
 	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] X[i];
 	delete[] X;
-
 
 	for (int i = 0; i < M; i++)
 		delete[] d_buffer[i];
@@ -277,16 +255,13 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		delete[] X_buffer[i];
 	delete[] X_buffer;
 
-
 	for (int i = 0; i < M ; i++)
 		delete[] D_buffer[i];
 	delete[] D_buffer;
 
-
 	for (int i = 0; i < M; i++)
 		delete[] output_Y[i];
 	delete[] output_Y;
-
 
 	for (int i = 0; i < M; i++)
 		delete[] output_D[i];
@@ -295,11 +270,6 @@ void __stdcall PlugIn::LEPlugin_Delete()
 	for (int i = 0; i < M; i++)
 		delete[] output_E[i];
 	delete[] output_E;
-
-
-
-	
-
 
 	if (p0 != 0)
 	{
@@ -330,16 +300,11 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		y = 0;
 	}
 
-	
-
 	if (input_buffer != 0)
 	{
 		ippsFree(input_buffer);
 		input_buffer = 0;
 	}
-
-
-	
 }
 
 PlugIn::~PlugIn(void)
@@ -407,21 +372,23 @@ void __stdcall PlugIn::LESetParameter(int Index,void *Data,LPVOID bBroadCastInfo
 		M = *((int*)Data);
 		CBFunction(this, NUTS_UPDATERTWATCH, BANDE_ID, 0);
 	}
+
 	if (Index == LUNGHEZZA_PROTOTIPO_ID)
 	{
 		N = *((int*)Data);
 		CBFunction(this, NUTS_UPDATERTWATCH, LUNGHEZZA_PROTOTIPO_ID, 0);
 	}
+
 	if (Index == LUNGHEZZA_INCOGNITO_ID)
 	{
 		L = *((int*)Data);
 		CBFunction(this, NUTS_UPDATERTWATCH, LUNGHEZZA_INCOGNITO_ID, 0);
 	}
+
 	if (Index == STEPSIZE_ID)
 	{
 		step_size = *((double*)Data);
 		CBFunction(this, NUTS_UPDATERTWATCH, STEPSIZE_ID, 0);
-
 	}
 
 	if (Index == PATH_ID)
@@ -462,6 +429,7 @@ int  __stdcall PlugIn::LEGetParameter(int Index,void *Data)
 	{
 		strcpy((char*)Data, save_name);
 	}
+
 	return 0;
 }
 
@@ -531,6 +499,7 @@ void __stdcall PlugIn::LERTWatchInit()
 	NewWatch3.ExtraInfo = &ExEdit3;
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch3);
 
+
 	WatchType NewWatch4;
 	memset(&NewWatch4, 0, sizeof(WatchType));
 	NewWatch4.EnableWrite = true;
@@ -547,6 +516,7 @@ void __stdcall PlugIn::LERTWatchInit()
 	ExEdit4.MinValue = 0.0;
 	NewWatch4.ExtraInfo = &ExEdit4;
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch4);
+
 
 	WatchType NewWatch5;
 	memset(&NewWatch5, 0, sizeof(WatchType));
