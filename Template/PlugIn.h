@@ -19,21 +19,7 @@
 
 #define WIDTHDEF 75
 
-#define NUTS_NAME	"HRTF"
-#define BANDE_ID 6
-#define LUNGHEZZA_PROTOTIPO_ID 2
-#define LUNGHEZZA_INCOGNITO_ID 3
-#define STEPSIZE_ID 4
-#define PATH_ID 5
-
-#define PIN_SEGNALE_IN 0
-#define PIN_RIFERIMENTO_IN 1
-
-#define PIN_PETRAGLIA_OUT 0 
-#define PIN_RIFERIMENTO_OUT 1 
-
-
-
+#define NUTS_NAME	"Template"
 
 
 class PlugIn :	public LEEffect
