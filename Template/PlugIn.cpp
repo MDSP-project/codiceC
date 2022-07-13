@@ -21,6 +21,8 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	M = 16;   // numero Bande
 	L = 256;  // lunghezza filtro incognito
 	K = (N + L) / M + 1; // lunghezza dei filtri adattivi
+	K = (N + L) / M + 1; // Numero di tappi per ogni filtro adattivo
+	delay = N / M; // Valore del ritardo
 	step_size = 0.0001; //Valore massimo dello step size per l'adattamento
 	beta = 0.99; // Peso per la stima della potenza in ogni banda
 	e = 0;
@@ -476,8 +478,6 @@ void __stdcall PlugIn::LELoadSetUp()
 
 }
 
-void __stdcall PlugIn::LERTWatchInit()
-{
 	
 	WatchType NewWatch1; 
 	memset(&NewWatch1, 0, sizeof(WatchType)); 								
@@ -555,6 +555,8 @@ void __stdcall PlugIn::LERTWatchInit()
 	NewWatch5.LenByte = 256 * sizeof(char);
 	NewWatch5.TypeVar = WTC_LPCHAR;
 	NewWatch5.IDVar = PATH_ID;
+	sprintf_s(NewWatch5.VarName, MAXCARDEBUGPLUGIN, "path del filtro prototipo");
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch5);
 	sprintf_s(NewWatch5.VarName, MAXCARDEBUGPLUGIN, "path del filtro prototipo");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch5);
 }
