@@ -537,14 +537,14 @@ void __stdcall PlugIn::LERTWatchInit()
 	NewWatch4.LenByte = sizeof(double);
 	NewWatch4.TypeVar = WTC_DOUBLE;
 	NewWatch4.IDVar = STEPSIZE_ID;
-	sprintf(NewWatch4.VarName, "Stepsize\0");
+	sprintf(NewWatch4.VarName, "Stepsize (max value: 1/K)\0");
 	ExtraInfoRTEdit ExEdit4;
 	memset(&ExEdit4, 0, sizeof(ExtraInfoRTEdit));
 	ExEdit4.TypeExtraInfo = 1;
 	ExEdit4.sizeExtraInfo = sizeof(ExtraInfoRTEdit);
 	ExEdit4.EnableWheel = false;
-	ExEdit4.MaxValue = 1024;
-	ExEdit4.MinValue = 2;
+	ExEdit4.MaxValue = 1.0;
+	ExEdit4.MinValue = 0.0;
 	NewWatch4.ExtraInfo = &ExEdit4;
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch4);
 
