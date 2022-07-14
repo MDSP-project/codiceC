@@ -509,8 +509,14 @@ PlugIn::~PlugIn(void)
 
 bool __stdcall PlugIn::LEInfoIO(int index,int type, char *StrInfo)
 {
-	if(type==INPUT) sprintf(StrInfo,"In[%d]",index);
-	if(type==OUTPUT) sprintf(StrInfo,"Out[%d]",index);
+	if (type == INPUT) {
+		if (index == PIN_SEGNALE_IN) sprintf(StrInfo, "In Segnale");
+		if (index == PIN_RIFERIMENTO_IN) sprintf(StrInfo, "In Riferimento");
+	}
+	if (type == OUTPUT) {
+		if (index == PIN_PETRAGLIA_OUT) sprintf(StrInfo, "Out Petraglia");
+		if (index == PIN_RIFERIMENTO_OUT) sprintf(StrInfo, "Out Riferimento");
+	}
 	return true;
 }
 
@@ -555,11 +561,68 @@ void __stdcall PlugIn::LESetName(char *Name)
 
 void __stdcall PlugIn::LESetParameter(int Index,void *Data,LPVOID bBroadCastInfo)
 {
+	if (Index == BANDE_ID)
+	{
+		M = *((int*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, BANDE_ID, 0);
+	}
 
+	if (Index == LUNGHEZZA_PROTOTIPO_ID)
+	{
+		N = *((int*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, LUNGHEZZA_PROTOTIPO_ID, 0);
+	}
+
+	if (Index == LUNGHEZZA_INCOGNITO_ID)
+	{
+		L = *((int*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, LUNGHEZZA_INCOGNITO_ID, 0);
+	}
+
+	if (Index == STEPSIZE_ID)
+	{
+		step_size = *((double*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, STEPSIZE_ID, 0);
+	}
+
+	if (Index == PATH_ID)
+	{
+		strcpy(save_name, (char*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, PATH_ID, 0);
+	}
 }
 
 int  __stdcall PlugIn::LEGetParameter(int Index,void *Data)
 {
+	if (Index == BANDE_ID)
+	{
+		*((int*)Data) = M;
+	}
+
+
+	if (Index == LUNGHEZZA_PROTOTIPO_ID)
+	{
+		*((int*)Data) = N;
+	}
+
+
+	if (Index == LUNGHEZZA_INCOGNITO_ID)
+	{
+		*((int*)Data) = L;
+	}
+
+
+	if (Index == STEPSIZE_ID)
+	{
+		*((double*)Data) = step_size;
+	}
+
+
+	if (Index == PATH_ID)
+	{
+		strcpy((char*)Data, save_name);
+	}
+
 	return 0;
 }
 
@@ -575,6 +638,86 @@ void __stdcall PlugIn::LELoadSetUp()
 
 void __stdcall PlugIn::LERTWatchInit()
 {
+	WatchType NewWatch1;
+	memset(&NewWatch1, 0, sizeof(WatchType));
+	NewWatch1.EnableWrite = true;
+	NewWatch1.LenByte = sizeof(int);
+	NewWatch1.TypeVar = WTC_INT;
+	NewWatch1.IDVar = BANDE_ID;
+	sprintf(NewWatch1.VarName, "Bande\0");
+	ExtraInfoRTEdit ExEdit1;
+	memset(&ExEdit1, 0, sizeof(ExtraInfoRTEdit));
+	ExEdit1.TypeExtraInfo = 1;
+	ExEdit1.sizeExtraInfo = sizeof(ExtraInfoRTEdit);
+	ExEdit1.EnableWheel = false;
+	ExEdit1.MaxValue = 512;
+	ExEdit1.MinValue = 2;
+	NewWatch1.ExtraInfo = &ExEdit1;
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch1);
+
+
+	WatchType NewWatch2;
+	memset(&NewWatch2, 0, sizeof(WatchType));
+	NewWatch2.EnableWrite = true;
+	NewWatch2.LenByte = sizeof(int);
+	NewWatch2.TypeVar = WTC_INT;
+	NewWatch2.IDVar = LUNGHEZZA_PROTOTIPO_ID;
+	sprintf(NewWatch2.VarName, "Lunghezza filtro protoripo\0");
+	ExtraInfoRTEdit ExEdit2;
+	memset(&ExEdit2, 0, sizeof(ExtraInfoRTEdit));
+	ExEdit2.TypeExtraInfo = 1;
+	ExEdit2.sizeExtraInfo = sizeof(ExtraInfoRTEdit);
+	ExEdit2.EnableWheel = false;
+	ExEdit2.MaxValue = 1024;
+	ExEdit2.MinValue = 2;
+	NewWatch2.ExtraInfo = &ExEdit2;
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch2);
+
+
+	WatchType NewWatch3;
+	memset(&NewWatch3, 0, sizeof(WatchType));
+	NewWatch3.EnableWrite = true;
+	NewWatch3.LenByte = sizeof(int);
+	NewWatch3.TypeVar = WTC_INT;
+	NewWatch3.IDVar = LUNGHEZZA_INCOGNITO_ID;
+	sprintf(NewWatch3.VarName, "Lunghezza filtro incognito\0");
+	ExtraInfoRTEdit ExEdit3;
+	memset(&ExEdit3, 0, sizeof(ExtraInfoRTEdit));
+	ExEdit3.TypeExtraInfo = 1;
+	ExEdit3.sizeExtraInfo = sizeof(ExtraInfoRTEdit);
+	ExEdit3.EnableWheel = false;
+	ExEdit3.MaxValue = 1024;
+	ExEdit3.MinValue = 2;
+	NewWatch3.ExtraInfo = &ExEdit3;
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch3);
+
+
+	WatchType NewWatch4;
+	memset(&NewWatch4, 0, sizeof(WatchType));
+	NewWatch4.EnableWrite = true;
+	NewWatch4.LenByte = sizeof(double);
+	NewWatch4.TypeVar = WTC_DOUBLE;
+	NewWatch4.IDVar = STEPSIZE_ID;
+	sprintf(NewWatch4.VarName, "Stepsize (max value: 1/K)\0");
+	ExtraInfoRTEdit ExEdit4;
+	memset(&ExEdit4, 0, sizeof(ExtraInfoRTEdit));
+	ExEdit4.TypeExtraInfo = 1;
+	ExEdit4.sizeExtraInfo = sizeof(ExtraInfoRTEdit);
+	ExEdit4.EnableWheel = false;
+	ExEdit4.MaxValue = 1.0;
+	ExEdit4.MinValue = 0.0;
+	NewWatch4.ExtraInfo = &ExEdit4;
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch4);
+
+
+	WatchType NewWatch5;
+	memset(&NewWatch5, 0, sizeof(WatchType));
+	NewWatch5.EnableWrite = true;
+	NewWatch5.LenByte = 256 * sizeof(char);
+	NewWatch5.TypeVar = WTC_LPCHAR;
+	NewWatch5.IDVar = PATH_ID;
+	sprintf_s(NewWatch5.VarName, MAXCARDEBUGPLUGIN, "path del filtro prototipo");
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch5);
 
 }
 
