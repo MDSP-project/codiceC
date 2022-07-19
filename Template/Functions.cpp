@@ -649,4 +649,41 @@ void sintesiE(double** F, double** Output_Y, double** Y, int M, int N, int Frame
 }
 
 
+void calcG( double** G, double** F, int M, int K, int N)
+{
+
+	Ipp8u* pBuffer;
+	int bufSize = 0;
+	IppStatus status;
+	IppEnum funCfg = (IppEnum)(ippAlgAuto);
+
+	Ipp64f* g;
+	g = ippsMalloc_64f(K + N - 1);
+	ippsZero_64f(g, K + N - 1);
+
+	Ipp64f* g_tmp;
+	g_tmp = ippsMalloc_64f(K+N-1);
+	ippsZero_64f(g_tmp, K+N-1);
+
+	for (int m = 0; m < M; m++)
+	{
+		status = ippsConvolveGetBufferSize(K, N, ipp64f, funCfg, &bufSize);
+		pBuffer = ippsMalloc_8u(bufSize);
+		ippsConvolve_64f(G[m], K, F[m], N, g_tmp, 0, pBuffer);  //convoluzione per i percorsi dritti (numeri reali)
+
+		for (int k = 0; k < K+N-1; k++)
+		{
+			g[k] += g_tmp[k];
+
+		}
+
+	}
+
+	write_dat("\\riposta.dat", g, K + N - 1, "C:\\Users\\alleg\\Desktop\\Nuova cartella");
+
+	ippsFree(g_tmp);
+	ippsFree(g);
+}
+
+
 

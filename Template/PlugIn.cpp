@@ -18,7 +18,7 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	e = 0;
 	i = 0;
 	memset(save_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
-	strcpy(save_name, "C:\\Users\\user\\Desktop\\prototipoMC.dat");
+	strcpy(save_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\prototipoMC.dat");
 	N = 256;  // lunghezza filtro prototipo
 	M = 16;   // numero Bande
 	L = 256;  // lunghezza filtro incognito
@@ -223,6 +223,10 @@ void __stdcall PlugIn::LEPlugin_Init()
 
 void __stdcall PlugIn::LEPlugin_Delete()
 {
+
+
+	calcG(G, F, M, K, N);
+
 	for (int i = 0; i < M; i++)
 		delete[] H[i];
 	delete[] H;
