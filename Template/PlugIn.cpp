@@ -6,7 +6,7 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 {
 
 	LESetNumInput(2);  //dichiarazione 2 ingressi
-	LESetNumOutput(2); //dichiarazione 2 uscite
+	LESetNumOutput(3); //dichiarazione 2 uscite
 
 	FrameSize = CBFunction(this,NUTS_GET_FS_SR,0,(LPVOID)AUDIOPROC);
 	SampleRate = CBFunction(this,NUTS_GET_FS_SR,1,(LPVOID)AUDIOPROC);	
@@ -33,6 +33,7 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	double* InputData_d = ((double*)Input[1]->DataBuffer);
 	double* OutputData = ((double*)Output[0]->DataBuffer);
 	double* OutputDataD = ((double*)Output[1]->DataBuffer); 
+	double* OutputDataE = ((double*)Output[2]->DataBuffer);
 
 
 	analisi(InputData_d, InputData_x, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize);   //Funzione blocchi di analisi
@@ -46,11 +47,15 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 			adaptation(G, mu, e, X_buffer, K, M);
 			
 		}
+		for (int m = 0; m < M; m++) {
+			E[m][j] = e[m];
+		}
 		
 	} 
 	
 	sintesi(F, output_Y, Y, M, N, FrameSize, OutputData);    //Funzione blocchi di sintesi
 	sintesi(F, output_D, D, M, N, FrameSize,OutputDataD);
+	sintesiE(F, output_E, E, M, N, FrameSize, OutputDataE);
 
 	i=1;  // dopo il primo frame adatto i filtri G
 
@@ -151,6 +156,13 @@ void __stdcall PlugIn::LEPlugin_Init()
 		memset(Y[i], 0.0, (FrameD) * sizeof(double));
 	}
 
+	E = new double* [M];		// Uscita dai filtri adattivi in  ogni banda
+	for (int i = 0; i < M; i++)
+	{
+		E[i] = new double[FrameD];
+		memset(E[i], 0.0, (FrameD) * sizeof(double));
+	}
+
 	d_buffer = new double* [M];		// Buffer in ingresso al banco di analisi del segnale di riferimento
 	for (int i = 0; i < M; i++)
 	{
@@ -239,6 +251,10 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		delete[] Y[i];
 	delete[] Y;
 
+	for (int i = 0; i < M; i++)
+		delete[] E[i];
+	delete[] E;
+
 	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] X[i];
 	delete[] X;
@@ -322,6 +338,7 @@ bool __stdcall PlugIn::LEInfoIO(int index,int type, char *StrInfo)
 	if (type == OUTPUT) {
 		if (index == PIN_PETRAGLIA_OUT) sprintf(StrInfo, "Out Petraglia");
 		if (index == PIN_RIFERIMENTO_OUT) sprintf(StrInfo, "Out Riferimento");
+		if (index == PIN_ERRORE_OUT) sprintf(StrInfo, "Out Errore");
 	}
 	return true;
 }

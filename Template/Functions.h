@@ -20,3 +20,4 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffe
 void calculatemu(double step_size, Ipp64f* P, double** X,double* mu, int M, double beta, int j);
 void adaptation(double** G,double* mu, double* e, double** X_buffer, int K, int M);
 void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesize, double* OutputData);
+void sintesiE(double** F, double** Output_Y, double** Y, int M, int N, int Framesize, double* OutputData);

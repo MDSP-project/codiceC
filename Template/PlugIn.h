@@ -31,6 +31,7 @@
 
 #define PIN_PETRAGLIA_OUT 0 
 #define PIN_RIFERIMENTO_OUT 1 
+#define PIN_ERRORE_OUT 2
 
 
 
@@ -84,7 +85,7 @@ private:
 	Ipp64f* p0, *P, *mu, *input_buffer,*y, *e;
 	char save_name[MAX_FILE_NAME_LENGTH];
 	int N, M, L, K, delay,i;
-	double** Hp, ** H, **F, **G, **delay_buffer, **D, **Y, **X;
+	double** Hp, ** H, **F, **G, **delay_buffer, **D, **Y, **X, **E;
 	double** d_buffer, ** x_buffer, ** X_buffer, ** D_buffer, ** output_Y, ** output_D, ** output_E;
 	double step_size, beta, FrameD;
 

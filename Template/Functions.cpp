@@ -559,5 +559,94 @@ void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesi
 	}
 }
 
+void sintesiE(double** F, double** Output_Y, double** Y, int M, int N, int Framesize, double* OutputData)
+{
+	double** interp = 0;
+	int i = 0;
+	Ipp64f* temp1 = 0;
+	Ipp64f* Gw = 0;
+	Ipp64f* y = 0;
+
+	interp = new double* [M];
+	for (int i = 0; i < M; i++)
+	{
+		interp[i] = new double[Framesize];
+		memset(interp[i], 0.0, (Framesize) * sizeof(double));
+	}
+
+
+	if (temp1 == 0)
+	{
+		temp1 = ippsMalloc_64f(N);
+		ippsZero_64f(temp1, N);
+	}
+
+	if (Gw == 0)
+	{
+		Gw = ippsMalloc_64f(M);
+		ippsZero_64f(Gw, M);
+	}
+
+	if (y == 0)
+	{
+		y = ippsMalloc_64f(Framesize);
+		ippsZero_64f(y, Framesize);
+	}
+
+	for (int n = 0; n < Framesize; n++)
+	{
+		for (int m = 0; m < M; m++)
+		{
+			if ((n % M) == 0)
+			{
+				interp[m][n] = Y[m][i]; //downsampling
+				if (m == 15)
+				{
+					i = i + 1;
+				}
+			}
+			else
+				interp[m][n] = 0; //upsampling
+
+
+		}
+
+		for (int m = 0; m < M; m++)
+		{
+			ippsCopy_64f(Output_Y[m], temp1, N);
+			ippsCopy_64f(temp1, Output_Y[m] + 1, N - 1);
+			Output_Y[m][0] = interp[m][n];
+
+			ippsDotProd_64f(F[m], Output_Y[m], N, &Gw[m]);
+		}
+
+		ippsSum_64f(Gw, M, &y[n]);
+		OutputData[n] = y[n];
+
+	}
+
+	for (int i = 0; i < M; i++)
+		delete[] interp[i];
+	delete[] interp;
+
+	if (temp1 != 0)
+	{
+		ippsFree(temp1);
+		temp1 = 0;
+	}
+
+	if (y != 0)
+	{
+		ippsFree(y);
+		y = 0;
+	}
+
+	if (Gw != 0)
+	{
+		ippsFree(Gw);
+		Gw = 0;
+	}
+}
+
 
 
