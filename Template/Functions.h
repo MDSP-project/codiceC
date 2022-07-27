@@ -21,4 +21,4 @@ void calculatemu(double step_size, Ipp64f* P, double** X,double* mu, int M, doub
 void adaptation(double** G,double* mu, double* e, double** X_buffer, int K, int M);
 void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesize, double* OutputData);
 void sintesiE(double** F, double** Output_Y, double** Y, int M, int N, int Framesize, double* OutputData);
-void calcG(double** G, double** F, int M, int K, int N);
+void calcG(double** G, double** F, int M, int K, int N, char* name, char* save_path);

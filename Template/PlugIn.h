@@ -20,11 +20,13 @@
 #define WIDTHDEF 75
 
 #define NUTS_NAME	"HRTF"
-#define BANDE_ID 6
+#define BANDE_ID 1
 #define LUNGHEZZA_PROTOTIPO_ID 2
 #define LUNGHEZZA_INCOGNITO_ID 3
 #define STEPSIZE_ID 4
 #define PATH_ID 5
+#define IR_PATH 6
+#define IR_NAME 7
 
 #define PIN_SEGNALE_IN 0
 #define PIN_RIFERIMENTO_IN 1
@@ -84,6 +86,8 @@ private:
 	int FrameSize,SampleRate;
 	Ipp64f* p0, *P, *mu, *input_buffer,*y, *e;
 	char save_name[MAX_FILE_NAME_LENGTH];
+	char name[MAX_FILE_NAME_LENGTH];
+	char save_path[MAX_FILE_NAME_LENGTH];
 	int N, M, L, K, delay,i;
 	double** Hp, ** H, **F, **G, **delay_buffer, **D, **Y, **X, **E;
 	double** d_buffer, ** x_buffer, ** X_buffer, ** D_buffer, ** output_Y, ** output_D, ** output_E;

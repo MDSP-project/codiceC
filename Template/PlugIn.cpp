@@ -8,8 +8,13 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	LESetNumInput(2);  //dichiarazione 2 ingressi
 	LESetNumOutput(3); //dichiarazione 2 uscite
 
-	FrameSize = CBFunction(this,NUTS_GET_FS_SR,0,(LPVOID)AUDIOPROC);
-	SampleRate = CBFunction(this,NUTS_GET_FS_SR,1,(LPVOID)AUDIOPROC);	
+	memset(save_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
+	strcpy(save_name, "C:\\Users\\Gregorio\\Desktop\\prototipoMC.dat");
+	memset(name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
+	strcpy(name, "risposta.dat");
+	memset(save_path, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
+	strcpy(save_path, "C:\\Users\\Gregorio\\Desktop\\");
+
 	p0 = 0;
 	P = 0;
 	mu = 0;
@@ -17,8 +22,7 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	input_buffer = 0;
 	e = 0;
 	i = 0;
-	memset(save_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
-	strcpy(save_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\prototipoMC.dat");
+
 	N = 256;  // lunghezza filtro prototipo
 	M = 16;   // numero Bande
 	L = 256;  // lunghezza filtro incognito
@@ -64,6 +68,9 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 
 void __stdcall PlugIn::LEPlugin_Init()
 {
+	FrameSize = CBFunction(this, NUTS_GET_FS_SR, 0, (LPVOID)AUDIOPROC);
+	SampleRate = CBFunction(this, NUTS_GET_FS_SR, 1, (LPVOID)AUDIOPROC);
+
 	//Inizializzazione dei Filtri Adattivi e del vettore delle Potenze
 	K = (N + L) / M + 1; // Numero di tappi per ogni filtro adattivo
 	delay = N / M; // Valore del ritardo
@@ -225,7 +232,7 @@ void __stdcall PlugIn::LEPlugin_Delete()
 {
 
 
-	calcG(G, F, M, K, N);
+	calcG(G, F, M, K, N, name, save_path);
 
 	for (int i = 0; i < M; i++)
 		delete[] H[i];
@@ -417,6 +424,18 @@ void __stdcall PlugIn::LESetParameter(int Index,void *Data,LPVOID bBroadCastInfo
 		strcpy(save_name, (char*)Data);
 		CBFunction(this, NUTS_UPDATERTWATCH, PATH_ID, 0);
 	}
+
+	if (Index == IR_NAME)
+	{
+		strcpy(name, (char*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, IR_NAME, 0);
+	}
+
+	if (Index == IR_PATH)
+	{
+		strcpy(save_path, (char*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, IR_PATH, 0);
+	}
 	
 }
 
@@ -449,6 +468,16 @@ int  __stdcall PlugIn::LEGetParameter(int Index,void *Data)
 	if (Index == PATH_ID)
 	{
 		strcpy((char*)Data, save_name);
+	}
+
+	if (Index == IR_NAME)
+	{
+		strcpy((char*)Data, name);
+	}
+
+	if (Index == IR_PATH)
+	{
+		strcpy((char*)Data, save_path);
 	}
 
 	return 0;
@@ -545,8 +574,27 @@ void __stdcall PlugIn::LERTWatchInit()
 	NewWatch5.LenByte = 256 * sizeof(char);
 	NewWatch5.TypeVar = WTC_LPCHAR;
 	NewWatch5.IDVar = PATH_ID;
-	sprintf_s(NewWatch5.VarName, MAXCARDEBUGPLUGIN, "path del filtro prototipo");
+	sprintf_s(NewWatch5.VarName, MAXCARDEBUGPLUGIN, "path+nome del filtro prototipo\0");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch5);
+
+	WatchType NewWatch6;
+	memset(&NewWatch6, 0, sizeof(WatchType));
+	NewWatch6.EnableWrite = true;
+	NewWatch6.LenByte = 256 * sizeof(char);
+	NewWatch6.TypeVar = WTC_LPCHAR;
+	NewWatch6.IDVar = IR_PATH;
+	sprintf_s(NewWatch6.VarName, MAXCARDEBUGPLUGIN, "path dell'IR\0");
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch6);
+
+	WatchType NewWatch7;
+	memset(&NewWatch7, 0, sizeof(WatchType));
+	NewWatch7.EnableWrite = true;
+	NewWatch7.LenByte = 256 * sizeof(char);
+	NewWatch7.TypeVar = WTC_LPCHAR;
+	NewWatch7.IDVar = IR_NAME;
+	sprintf_s(NewWatch7.VarName, MAXCARDEBUGPLUGIN, "nome dell' IR\0");
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch7);
+
 }
 
 void __stdcall PlugIn::LESampleRateChange(int NewVal,int TrigType)

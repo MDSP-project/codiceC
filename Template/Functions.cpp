@@ -247,8 +247,8 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 
 	for (int n = 0; n < FrameSize; n++)
 	{
-		d[n] = (double)InputData_d[n] / 32768.0;
-		x[n] = (double)InputData_x[n] / 32768.0;
+		d[n] = (double)InputData_d[n] / (float)pow(2,15);
+		x[n] = (double)InputData_x[n] / (float)pow(2,15);
 
 		for (int m = 0; m < 2*M-1 ; m++)
 		{
@@ -532,7 +532,7 @@ void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesi
 		}
 
 		ippsSum_64f(Gw, M, &y[n]);
-		OutputData[n] = y[n] * 32768.0 * M;
+		OutputData[n] = y[n] * (float)pow(2,15) * M;
 		
 	}	
 
@@ -649,7 +649,7 @@ void sintesiE(double** F, double** Output_Y, double** Y, int M, int N, int Frame
 }
 
 
-void calcG( double** G, double** F, int M, int K, int N)
+void calcG( double** G, double** F, int M, int K, int N, char* name, char* save_path)
 {
 
 	Ipp8u* pBuffer;
@@ -679,7 +679,7 @@ void calcG( double** G, double** F, int M, int K, int N)
 
 	}
 
-	write_dat("\\riposta.dat", g, K + N - 1, "C:\\Users\\alleg\\Desktop\\Nuova cartella");
+	write_dat(name, g, K + N - 1, save_path);
 
 	ippsFree(g_tmp);
 	ippsFree(g);
