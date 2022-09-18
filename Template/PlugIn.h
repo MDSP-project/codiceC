@@ -20,11 +20,22 @@
 #define WIDTHDEF 75
 
 #define NUTS_NAME	"X-TALK"
-#define BANDE_ID 6
+#define BANDE_ID 1
 #define LUNGHEZZA_PROTOTIPO_ID 2
 #define LUNGHEZZA_INCOGNITO_ID 3
 #define STEPSIZE_ID 4
 #define PATH_ID 5
+#define W1_PATH 6
+#define W1_NAME 7
+
+#define W2_PATH 8
+#define W2_NAME 9
+
+#define W3_PATH 10
+#define W3_NAME 11
+
+#define W4_PATH 12
+#define W4_NAME 13
 
 #define PIN_SEGNALE_L 0
 #define PIN_SEGNALE_R 1
