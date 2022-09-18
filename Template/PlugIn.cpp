@@ -16,7 +16,7 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	N = 256;  // lunghezza filtro prototipo
 	M = 8;   // numero Bande
 	L = 1024;  // lunghezza filtro incognito
-	step_size = 0.00005; //Valore massimo dello step size per l'adattamento
+	step_size = 0.0000005; //Valore massimo dello step size per l'adattamento
 	beta = 0.9; // Peso per la stima della potenza in ogni banda
 	alpha = 0.5E-10;
 	Buf_dim = FrameSize;
@@ -48,8 +48,8 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	strcpy(save_name, "C:\\Users\\alleg\\Desktop\\SACC\\prototipoMC.dat");
 	strcpy(hll_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\A.dat");
 	strcpy(hlr_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\B.dat");
-	strcpy(hrl_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\C.dat");
-	strcpy(hrr_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\D.dat");
+	strcpy(hrl_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\B.dat");
+	strcpy(hrr_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\A.dat");
 }
 
 int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID ExtraInfo)
@@ -130,7 +130,6 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 			adaptation(W3, mu3, e1, e2, Z_w3_1, Z_w3_2, K, M);
 			adaptation(W4, mu4, e1, e2, Z_w4_1, Z_w4_2, K, M);
 
-			
 		}
 		
 	} 
