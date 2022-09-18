@@ -8,16 +8,17 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 {
 
 	LESetNumInput(2);  //dichiarazione 2 ingressi
-	LESetNumOutput(3); //dichiarazione 2 uscite
+	LESetNumOutput(4); //dichiarazione 2 uscite
 
 	FrameSize = CBFunction(this,NUTS_GET_FS_SR,0,(LPVOID)AUDIOPROC);
 	SampleRate = CBFunction(this,NUTS_GET_FS_SR,1,(LPVOID)AUDIOPROC);	
 
 	N = 256;  // lunghezza filtro prototipo
 	M = 16;   // numero Bande
-	L = 256;  // lunghezza filtro incognito
-	step_size = 0.0001; //Valore massimo dello step size per l'adattamento
+	L = 1024;  // lunghezza filtro incognito
+	step_size = 0.0005; //Valore massimo dello step size per l'adattamento
 	beta = 0.99; // Peso per la stima della potenza in ogni banda
+	alpha = 0.5E-10;
 	Buf_dim = FrameSize;
 	K =256; // Numero di tappi per ogni filtro adattivo
 	delay_value = N / M; // Valore del ritardo
@@ -54,9 +55,11 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	
 	double* InputData_xl= ((double*)Input[0]->DataBuffer);
 	double* InputData_xr = ((double*)Input[1]->DataBuffer);
-	double* OutputData = ((double*)Output[0]->DataBuffer);
-	double* OutputDataD = ((double*)Output[1]->DataBuffer); 
-	double* OutputDataE = ((double*)Output[2]->DataBuffer);
+
+	double* OutputDataL = ((double*)Output[0]->DataBuffer);
+	double* OutputDataR = ((double*)Output[1]->DataBuffer); 
+	double* OutputDataE_L = ((double*)Output[2]->DataBuffer);
+	double* OutputDataE_R = ((double*)Output[3]->DataBuffer);
 
 
 	analisi(InputData_xl, InputData_xr, an_buffer1, an_buffer2, X1, X2, H, M,  N,  FrameSize);   //Funzione blocchi di analisi
@@ -97,26 +100,42 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 		crossfilter(out_M3_1, out_w3_1, Z_w3_1, W3, K, N, N, FrameD, j);
 		crossfilter(out_M4_1, out_w4_1, Z_w4_1, W4, K, N, N, FrameD, j);
 
-		crossfilter(out_M1_2, out_w1_2, Z_w4_2, W1, K, N, N, FrameD, j);
-		crossfilter(out_M2_2, out_w2_2, Z_w3_2, W2, K, N, N, FrameD, j);
-		crossfilter(out_M3_2, out_w3_2, Z_w2_2, W3, K, N, N, FrameD, j);
-		crossfilter(out_M4_2, out_w4_2, Z_w1_2, W4, K, N, N, FrameD, j);
+		crossfilter(out_M1_2, out_w4_2, Z_w4_2, W1, K, N, N, FrameD, j);
+		crossfilter(out_M2_2, out_w3_2, Z_w3_2, W2, K, N, N, FrameD, j);
+		crossfilter(out_M3_2, out_w2_2, Z_w2_2, W3, K, N, N, FrameD, j);
+		crossfilter(out_M4_2, out_w1_2, Z_w1_2, W4, K, N, N, FrameD, j);
 
 		if (i>0)
 		{
-			//calculatemu(step_size, P, X, mu, M, beta, j);
-			//adaptation(G, mu, e, X_buffer, K, M);
+			calculatemu(step_size, P1_1, P1_2, Z_w1_1, Z_w1_2, mu1, M, alpha, beta, j);
+			calculatemu(step_size, P2_1, P2_2, Z_w2_1, Z_w2_2, mu2, M, alpha, beta, j);
+			calculatemu(step_size, P3_1, P3_2, Z_w3_1, Z_w3_2, mu3, M, alpha, beta, j);
+			calculatemu(step_size, P4_1, P4_2, Z_w4_1, Z_w4_2, mu4, M, alpha, beta, j);
+
+			for (size_t m = 0; m < M; m++)
+			{
+				out_sum_1[m][j] = out_w1_1[m][j] + out_w2_1[m][j] + out_w3_1[m][j] + out_w4_1[m][j];
+				out_sum_2[m][j] = out_w1_2[m][j] + out_w2_2[m][j] + out_w3_2[m][j] + out_w4_2[m][j];
+				e1[m] = out_buf_dly1[m][j] - out_sum_1[m][j];
+				e2[m] = out_buf_dly2[m][j] - out_sum_2[m][j];
+				E1[m][j] = e1[m];
+				E2[m][j] = e2[m];
+			}
+
+			adaptation(W1, mu1, e1, e2, Z_w1_1, Z_w1_2, K, M);
+			adaptation(W2, mu2, e1, e2, Z_w2_1, Z_w2_2, K, M);
+			adaptation(W3, mu3, e1, e2, Z_w3_1, Z_w3_2, K, M);
+			adaptation(W4, mu4, e1, e2, Z_w4_1, Z_w4_2, K, M);
+
 			
-		}
-		for (int m = 0; m < M; m++) {
-			//E[m][j] = e[m];
 		}
 		
 	} 
 	
-	//sintesi(F, output_Y, Y, M, N, FrameSize, OutputData);    //Funzione blocchi di sintesi
-	//sintesi(F, output_D, D, M, N, FrameSize,OutputDataD);
-	//sintesiE(F, output_E, E, M, N, FrameSize, OutputDataE);
+	sintesi(F, y1_buf, out_sum_1, M, N, FrameSize, OutputDataL);    //Funzione blocchi di sintesi
+	sintesi(F, y2_buf, out_sum_2, M, N, FrameSize, OutputDataR);
+	sintesiE(F, error1_buf, E1, M, N, FrameSize, OutputDataE_L);
+	sintesiE(F, error2_buf, E2, M, N, FrameSize, OutputDataE_R);
 
 	i=1;  // dopo il primo frame adatto i filtri G
 
@@ -1336,13 +1355,14 @@ PlugIn::~PlugIn(void)
 bool __stdcall PlugIn::LEInfoIO(int index,int type, char *StrInfo)
 {
 	if (type == INPUT) {
-		if (index == PIN_SEGNALE_IN) sprintf(StrInfo, "In Segnale");
-		if (index == PIN_RIFERIMENTO_IN) sprintf(StrInfo, "In Riferimento");
+		if (index == PIN_SEGNALE_L) sprintf(StrInfo, "In Left");
+		if (index == PIN_SEGNALE_R) sprintf(StrInfo, "In Right");
 	} 
 	if (type == OUTPUT) {
-		if (index == PIN_PETRAGLIA_OUT) sprintf(StrInfo, "Out Petraglia");
-		if (index == PIN_RIFERIMENTO_OUT) sprintf(StrInfo, "Out Riferimento");
-		if (index == PIN_ERRORE_OUT) sprintf(StrInfo, "Out Errore");
+		if (index == PIN_OUT_L) sprintf(StrInfo, "Out Left");
+		if (index == PIN_OUT_R) sprintf(StrInfo, "Out Right");
+		if (index == PIN_ERRORE_OUT_L) sprintf(StrInfo, "Out Errore left");
+		if (index == PIN_ERRORE_OUT_R) sprintf(StrInfo, "Out Errore Right");
 	}
 	return true;
 }
@@ -1509,7 +1529,7 @@ void __stdcall PlugIn::LERTWatchInit()
 	NewWatch3.LenByte = sizeof(int);
 	NewWatch3.TypeVar = WTC_INT;
 	NewWatch3.IDVar = LUNGHEZZA_INCOGNITO_ID;
-	sprintf(NewWatch3.VarName, "Lunghezza filtro incognito\0");
+	sprintf(NewWatch3.VarName, "Lunghezza HRTF\0");
 	ExtraInfoRTEdit ExEdit3;
 	memset(&ExEdit3, 0, sizeof(ExtraInfoRTEdit));
 	ExEdit3.TypeExtraInfo = 1;
@@ -1547,6 +1567,7 @@ void __stdcall PlugIn::LERTWatchInit()
 	NewWatch5.IDVar = PATH_ID;
 	sprintf_s(NewWatch5.VarName, MAXCARDEBUGPLUGIN, "path del filtro prototipo");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch5);
+
 }
 
 void __stdcall PlugIn::LESampleRateChange(int NewVal,int TrigType)

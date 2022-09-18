@@ -481,54 +481,56 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** W, int K, i
 }
 
 
-void calculatemu(double step_size, Ipp64f* P, double** X,double* mu, int M, double beta, int j)
+void calculatemu(double step_size, Ipp64f* P1, Ipp64f* P2, double** X1, double** X2, Ipp64f* mu, int M, double alpha, double beta, int j)
 {
 	for (int m = 0; m < 2*M-1; m++)
 	{
-		P[m] = P[m] * beta + (1 - beta) * (abs(pow(X[m][j], 2)));
+		P1[m] = P1[m] * beta + (1 - beta) * (abs(pow(X1[m][j], 2)));
+		P2[m] = P2[m] * beta + (1 - beta) * (abs(pow(X2[m][j], 2)));
 	}
-	mu[0] = step_size / (P[0] + P[1]);
-	mu[2 * M - 2] = step_size / (P[2 * M - 2] + P[2 * M - 3]);
+
+	mu[0] = step_size / (alpha + P1[0] + P2[0] + P1[1] + P2[1]);
+	mu[2 * M - 2] = step_size / (alpha + P1[2 * M - 2] + P1[2 * M - 3] + P2[2 * M - 2] + P2[2 * M - 3]);
 	for (int m = 1; m < 2*M-2; m++)
 	{
-		mu[m] = step_size / (P[m - 1] + P[m] + P[m + 1]);
+		mu[m] = step_size / (alpha + P1[m - 1] + P1[m] + P1[m + 1] + P2[m - 1] + P2[m] + P2[m + 1]);
 	}
 }
 
-void adaptation(double** G, double* mu, double* e, double** X_buffer, int K, int M)
+void adaptation(double** W, double* mu, double* e1, double* e2, double** X1, double** X2, int K, int M)
 {
-	double** G_adj = 0;
+	double** W_adj = 0;
 	int q = 2;
-	G_adj = new double* [M];
+	W_adj = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		G_adj[i] = new double[K];
-		memset(G_adj[i], 0.0, (K) * sizeof(double));
+		W_adj[i] = new double[K];
+		memset(W_adj[i], 0.0, (K) * sizeof(double));
 	}
 
 	for (int m = 1; m < M-1; m++)
 	{
 		for (int k = 0; k < K; k++)
 		{
-			G_adj[m][k] = G[m][k] + mu[q] * e[m] * X_buffer[q][k] + mu[q - 1] * e[m - 1] * X_buffer[q - 1][k] + mu[q + 1] * e[m + 1] * X_buffer[q + 1][k];
+			W_adj[m][k] = W[m][k] + mu[m] * (e1[m] * X1[q][k] + e1[m - 1] * X1[q - 1][k] +  e1[m + 1] * X1[q + 1][k] + e2[m] * X2[q][k] + e2[m - 1] * X2[q - 1][k] + e2[m + 1] * X2[q + 1][k]);
 		}
 		q = q + 2;
 	}
 
 	for (int k = 0; k < K; k++)
 	{
-		G_adj[0][k] = G[0][k] + mu[0] * e[0] * X_buffer[0][k] + mu[1] * e[1] * X_buffer[1][k];
-		G_adj[M-1][k] = G[M-1][k] + mu[M-1] * e[M-1] * X_buffer[M-1][k] + mu[M-2] * e[M-2] * X_buffer[M-2][k];
+		W_adj[0][k] = W[0][k] + mu[0] * (e1[0] * X1[0][k] + e1[1] * X1[1][k]+ e2[0] * X2[0][k] + e2[1] * X2[1][k]);
+		W_adj[M-1][k] = W[M-1][k] + mu[M-1] * (e1[M-1] * X1[M-1][k] + e1[M-2] * X1[M-2][k]+ e2[M - 1] * X2[M - 1][k] + e2[M - 2] * X2[M - 2][k]);
 	}
 
 	for (int m = 0; m < M; m++)
 	{
-		ippsCopy_64f(G_adj[m], G[m], K);
+		ippsCopy_64f(W_adj[m], W[m], K);
 	}
 
 	for (int i = 0; i < M; i++)
-		delete[] G_adj[i];
-	delete[] G_adj;
+		delete[] W_adj[i];
+	delete[] W_adj;
 }
 
 void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesize, double* OutputData)
