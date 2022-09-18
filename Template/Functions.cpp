@@ -197,10 +197,10 @@ void petr_cos_h(double* p0, double** H, int M, int N) {
 
 
 
-void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double** X_buffer, double** D, double** X, double** H, double** Hp, int M, int N, int FrameSize) {
+void analisi(double* InputData_xl, double* InputData_xr, double** Xl_buffer, double** Xr_buffer, double** Xl, double** Xr, double** H, int M, int N, int FrameSize) {
 	
-	Ipp64f* d = 0;
-	Ipp64f* x = 0;
+	Ipp64f* xl = 0;
+	Ipp64f* xr = 0;
 	double* temp1 = 0;
 	double* temp2 = 0;
 	double* U1 = 0;
@@ -209,22 +209,22 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 
 
 
-	if (d == 0)
+	if (xl == 0)
 	{
-		d = ippsMalloc_64f(FrameSize);
-		ippsZero_64f(d, FrameSize);
+		xl = ippsMalloc_64f(FrameSize);
+		ippsZero_64f(xl, FrameSize);
 	}
 
-	if (x == 0)
+	if (xr == 0)
 	{
-		x = ippsMalloc_64f(FrameSize);
-		ippsZero_64f(x, FrameSize);
+		xr = ippsMalloc_64f(FrameSize);
+		ippsZero_64f(xr, FrameSize);
 	}
 
 	if (temp1 == 0)
 	{
-		temp1 = ippsMalloc_64f(2*N-1);
-		ippsZero_64f(temp1, 2*N-1);
+		temp1 = ippsMalloc_64f(N);
+		ippsZero_64f(temp1, N);
 	}
 
 	if (temp2 == 0)
@@ -235,8 +235,8 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 
 	if (U1 == 0)
 	{
-		U1 = ippsMalloc_64f(2 * M - 1);
-		ippsZero_64f(U1, 2 * M - 1);
+		U1 = ippsMalloc_64f(M);
+		ippsZero_64f(U1, M);
 	}
 
 	if (U2 == 0)
@@ -247,46 +247,38 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 
 	for (int n = 0; n < FrameSize; n++)
 	{
-		d[n] = (double)InputData_d[n] / 32768.0;
-		x[n] = (double)InputData_x[n] / 32768.0;
+		xl[n] = (double)InputData_xl[n] / 32768.0;
+		xr[n] = (double)InputData_xr[n] / 32768.0;
 
-		for (int m = 0; m < 2*M-1 ; m++)
+		for (int m = 0; m < M ; m++)
 		{
 		
 			// scorrimento del vettore X_buff e aggiornamento
-			ippsCopy_64f(X_buffer[m], temp1, 2*N-1);
-			ippsCopy_64f(temp1, X_buffer[m] + 1, 2*N - 2);
-			X_buffer[m][0] = x[n];
+			ippsCopy_64f(Xl_buffer[m], temp1, N);
+			ippsCopy_64f(temp1, Xl_buffer[m] + 1, N);
+			Xl_buffer[m][0] = xl[n];
 
 			// moltiplicazione per il banco di analisi
 			//ippsDotProd_64f(H[m], X_buff[m], N, &Hx[m]);
-			ippsMul_64f(Hp[m], X_buffer[m], temp1, N);
+			ippsMul_64f(H[m], Xl_buffer[m], temp1, N);
 			ippsSum_64f(temp1, N, &U1[m]);
 
-			if (m<M)
-			{
-				ippsCopy_64f(D_buffer[m], temp2, N);
-				ippsCopy_64f(temp2, D_buffer[m] + 1, N - 1);
-				D_buffer[m][0] = d[n];
+			// scorrimento del vettore X_buff e aggiornamento
+			ippsCopy_64f(Xr_buffer[m], temp2, N);
+			ippsCopy_64f(temp1, Xr_buffer[m] + 1, N);
+			Xr_buffer[m][0] = xr[n];
 
-				// moltiplicazione per il banco di analisi
-				//ippsDotProd_64f(H[m], X_buff[m], N, &Hx[m]);
-				ippsMul_64f(H[m], D_buffer[m], temp2, N);
-				ippsSum_64f(temp2, N, &U2[m]);
-
-				if ((n % M) == 0)
-				{
-					D[m][i] = U2[m];
-
-				}
-			}
+			// moltiplicazione per il banco di analisi
+			//ippsDotProd_64f(H[m], X_buff[m], N, &Hx[m]);
+			ippsMul_64f(H[m], Xr_buffer[m], temp2, N);
+			ippsSum_64f(temp2, N, &U2[m]);
 		
 
 			//decimazione e interpolazione
 		if ((n % M) == 0) 
 			{
-			X[m][i] = U1[m]; //downsampling
-			
+			Xl[m][i] = U1[m]; //downsampling
+			Xr[m][i] = U2[m]; //downsampling
 		    }
 
 		
@@ -300,16 +292,16 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 	}
 
 
-	if (d != 0)
+	if (xl != 0)
 	{
-		ippsFree(d);
-		d = 0;
+		ippsFree(xl);
+		xl = 0;
 	}
 
-	if (x != 0)
+	if (xr != 0)
 	{
-		ippsFree(x);
-		x = 0;
+		ippsFree(xr);
+		xr = 0;
 	}
 
 	if (temp1 != 0)
@@ -338,12 +330,95 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 
 }
 
+void analisi_petr(double* InputData_x, double** X_buffer, double** X, double** Hp, int M, int N, int FrameSize) {
 
-void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffer, int delay, Ipp64f* e, double** G, double** D, int K, int M, int N, int FrameD, int j)
+	Ipp64f* x = 0;
+	double* temp1 = 0;
+	double* U1 = 0;
+	int i = 0;
+
+
+
+	if (x == 0)
+	{
+		x = ippsMalloc_64f(FrameSize);
+		ippsZero_64f(x, FrameSize);
+	}
+
+	if (temp1 == 0)
+	{
+		temp1 = ippsMalloc_64f(2*N-1);
+		ippsZero_64f(temp1, 2*N-1);
+	}
+
+	if (U1 == 0)
+	{
+		U1 = ippsMalloc_64f(2*M-1);
+		ippsZero_64f(U1, 2*M-1);
+	}
+
+	for (int n = 0; n < FrameSize; n++)
+	{
+		x[n] = (double)InputData_x[n] / 32768.0;
+	
+
+		for (int m = 0; m < 2*M-1; m++)
+		{
+
+			// scorrimento del vettore X_buff e aggiornamento
+			ippsCopy_64f(X_buffer[m], temp1, 2*N-1);
+			ippsCopy_64f(temp1, X_buffer[m] + 1, 2*N-2);
+			X_buffer[m][0] = x[n];
+
+			// moltiplicazione per il banco di analisi
+			//ippsDotProd_64f(H[m], X_buff[m], N, &Hx[m]);
+			ippsMul_64f(Hp[m], X_buffer[m], temp1, 2*N-1);
+			ippsSum_64f(temp1, 2*N-1, &U1[m]);
+
+
+
+			//decimazione e interpolazione
+			if ((n % M) == 0)
+			{
+				X[m][i] = U1[m]; //downsampling
+			}
+
+
+		}
+
+		if ((n % M) == 0)
+		{
+			i++; //downsampling
+
+		}
+	}
+
+
+	if (x != 0)
+	{
+		ippsFree(x);
+		x = 0;
+	}
+
+	if (temp1 != 0)
+	{
+		ippsFree(temp1);
+		temp1 = 0;
+	}
+
+	if (U1 != 0)
+	{
+		ippsFree(U1);
+		U1 = 0;
+	}
+
+}
+
+void crossfilter(double** X, double** Y, double** X_buffer, double** W, int K, int M, int N, int FrameD, int j)
 {
 	Ipp64f* temp1=0;
 	Ipp64f* Y_tmp = 0;
-	Ipp64f* temp2 = 0;
+
 	
 
 	if (temp1 == 0)
@@ -358,11 +433,6 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffe
 		ippsZero_64f(Y_tmp, M);
 	}
 
-	if (temp2 == 0)
-	{
-		temp2 = ippsMalloc_64f(delay);
-		ippsZero_64f(temp2, delay);
-	}
 
 	for (int m = 0; m < 2 * M - 1; m++)
 	{
@@ -380,23 +450,19 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffe
 	{
 		for(int k=0; k<K; k++)
 		{
-			Y_tmp[m] = Y_tmp[m] + X_buffer[q][k] * G[m][k] + X_buffer[q - 1][k] * G[m - 1][k] + X_buffer[q + 1][k] * G[q + 1][k];
+			Y_tmp[m] = Y_tmp[m] + X_buffer[q][k] * W[m][k] + X_buffer[q - 1][k] * W[m - 1][k] + X_buffer[q + 1][k] * W[q + 1][k];
 		}
 		q = q + 2;
 	}
 	for (int k = 0; k < K; k++)
 	{
-		Y_tmp[0] = Y_tmp[0] + X_buffer[0][k] * G[0][k] + X_buffer[1][k] * G[1][k];
-		Y_tmp[M-1]=Y_tmp[M-1]+ X_buffer[M-1][k] * G[M-1][k] + X_buffer[M-2][k] * G[M-2][k];
+		Y_tmp[0] = Y_tmp[0] + X_buffer[0][k] * W[0][k] + X_buffer[1][k] * W[1][k];
+		Y_tmp[M-1]=Y_tmp[M-1]+ X_buffer[2*M-2][k] * W[M-1][k] + X_buffer[2*M-3][k] * W[M-2][k];
 	}
 	for (int m = 0; m < M; m++)
 	{
 		Y[m][j] = Y_tmp[m];
 		
-		ippsCopy_64f(delay_buffer[m], temp2, delay);
-		ippsCopy_64f(temp2, delay_buffer[m] + 1, delay-1);
-		delay_buffer[m][0] = D[m][j];
-		e[m] = delay_buffer[m][delay-1] - Y_tmp[m];
 	}
 
 	
@@ -412,11 +478,6 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** delay_buffe
 		Y_tmp = 0;
 	}
 	
-	if (temp2 != 0)
-	{
-		ippsFree(temp2);
-		temp2 = 0;
-	}
 }
 
 
@@ -685,5 +746,69 @@ void calcG( double** G, double** F, int M, int K, int N)
 	ippsFree(g);
 }
 
+void filterHRTF(Ipp64f* x, Ipp64f* y, Ipp64f* E_buf, Ipp64f* b, int L, int FrameSize)
+{
+	double* temp1 = 0;
 
+	if (temp1 == 0)
+	{
+		temp1 = ippsMalloc_64f(L);
+		ippsZero_64f(temp1, L);
+	}
+
+	for (size_t i = 0; i < FrameSize; i++)
+	{
+		double d = 0.0;
+
+		ippsCopy_64f(E_buf, temp1, L);
+		ippsCopy_64f(temp1, E_buf + 1, L);
+		E_buf[0] = x[i];
+
+		for (size_t n = 0; n < L; n++)
+		{
+
+			d = d+E_buf[n]*b[n];
+
+		}
+
+		y[i] = d;
+
+	}
+
+	if (temp1 != 0)
+	{
+		ippsFree(temp1);
+		temp1 = 0;
+	}
+}
+
+void delay(double** X, double** out_delay, double** delay_buffer, double delay_value, int M, int FrameSize)
+{
+	for (size_t m = 0; m < M; m++)
+	{
+		if (delay_value < FrameSize)
+		{
+
+			ippsCopy_64f(delay_buffer[m], out_delay[m], delay_value);
+			
+		}
+		else
+		{
+			ippsCopy_64f(delay_buffer[m], out_delay[m], FrameSize);
+		}
+
+		if (delay_value > FrameSize)
+		{
+
+			ippsCopy_64f(delay_buffer[m], out_delay[m]+FrameSize+1, delay_value-FrameSize);
+			ippsCopy_64f(delay_buffer[m] + int(delay_value) - FrameSize + 1, X[m], FrameSize);
+		}
+		else if(delay_value!=FrameSize )
+		{
+			ippsCopy_64f(out_delay[m] + int(delay_value), X[m], FrameSize - delay_value);
+		}
+		ippsCopy_64f(delay_buffer[m], X[m] + FrameSize - int(delay_value), FrameSize);
+
+	}
+}
 

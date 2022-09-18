@@ -82,12 +82,12 @@ public:
 private:
 
 	int FrameSize,SampleRate;
-	Ipp64f* p0, *P, *mu, *input_buffer,*y, *e; //ok
+	Ipp64f* p0; //ok
 	Ipp64f* hll, *hlr, *hrl, *hrr, *hrtf, *hrtfmax; //ok
 	char save_name[MAX_FILE_NAME_LENGTH], hll_name[MAX_FILE_NAME_LENGTH], hlr_name[MAX_FILE_NAME_LENGTH],hrl_name[MAX_FILE_NAME_LENGTH],hrr_name[MAX_FILE_NAME_LENGTH];
-	int N, M, L, K, delay,i, Buf_dim;
+	int N, M, L, K, delay_value,i, Buf_dim;
 
-	double** Hp, ** H, **F, **delay_buffer, **D, **Y, **E;
+	double** Hp, ** H, **F;
 
 	//Definizione buffer----------------------------
 	double** W1, ** W2, ** W3, ** W4;//ok
@@ -121,10 +121,15 @@ private:
 	Ipp64f* e1, * e2;//ok
 	double** E1, ** E2;//ok
 
+	Ipp64f* y1, * y2;//ok
+	double** y1_buf, ** y2_buf;//ok
 
+	Ipp64f* error1, * error2;//ok
+	double** error1_buf, ** error2_buf;//ok
 
-	double**X_buffer, ** D_buffer, ** output_Y, ** output_D, ** output_E;
-	double step_size, beta, FrameD, alpha , delay_value;
+	double** out_M1_1, ** out_M2_1, ** out_M3_1, ** out_M4_1, ** out_M1_2, ** out_M2_2, ** out_M3_2, ** out_M4_2;
+
+	double step_size, beta, FrameD, alpha;
 
 
 };

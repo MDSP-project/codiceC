@@ -23,12 +23,18 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	delay_value = N / M; // Valore del ritardo
 
 	p0 = 0;
-	P = 0;
-	mu = 0;
-	y = 0;
-	input_buffer = 0;
-	e = 0;
 	i = 0;
+	hll, hlr, hrl, hrr, hrtf, hrtfmax = 0;
+	h11xl, h21xl, h12xl, h22xl = 0;
+	h11xr, h21xr, h12xr, h22xr = 0;
+	h11_sx_buffer, h21_sx_buffer, h12_sx_buffer, h22_sx_buffer = 0;
+	h11_ds_buffer, h21_ds_buffer, h12_ds_buffer, h22_ds_buffer = 0;
+	P1_1, P2_1, P3_1, P4_1 = 0;
+	P1_2, P2_2, P3_2, P4_2 = 0;
+	mu1, mu2, mu3, mu4 = 0;
+	e1, e2 = 0;
+	y1, y2 = 0;
+	error1, error2 = 0;
 
 	memset(save_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
 	memset(hll_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
@@ -46,33 +52,71 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID ExtraInfo)
 { 
 	
-	double* InputData_x = ((double*)Input[0]->DataBuffer);
-	double* InputData_d = ((double*)Input[1]->DataBuffer);
+	double* InputData_xl= ((double*)Input[0]->DataBuffer);
+	double* InputData_xr = ((double*)Input[1]->DataBuffer);
 	double* OutputData = ((double*)Output[0]->DataBuffer);
 	double* OutputDataD = ((double*)Output[1]->DataBuffer); 
 	double* OutputDataE = ((double*)Output[2]->DataBuffer);
 
 
-	analisi(InputData_d, InputData_x, d_buffer, x_buffer, D, X, H, Hp, M,  N,  FrameSize);   //Funzione blocchi di analisi
+	analisi(InputData_xl, InputData_xr, an_buffer1, an_buffer2, X1, X2, H, M,  N,  FrameSize);   //Funzione blocchi di analisi
+
+	//------------------------------------------------------------- HRTF
+	filterHRTF(InputData_xl, h11xl, h11_sx_buffer, hll, L,FrameSize);
+	filterHRTF(InputData_xl, h12xl, h12_sx_buffer, hlr, L, FrameSize);
+	filterHRTF(InputData_xl, h21xl, h21_sx_buffer, hrl, L, FrameSize);
+	filterHRTF(InputData_xl, h22xl, h22_sx_buffer, hrr, L, FrameSize);
+
+	filterHRTF(InputData_xr, h11xr, h11_ds_buffer, hll, L, FrameSize);
+	filterHRTF(InputData_xr, h12xr, h12_ds_buffer, hlr, L, FrameSize);
+	filterHRTF(InputData_xr, h21xr, h21_ds_buffer, hrl, L, FrameSize);
+	filterHRTF(InputData_xr, h22xr, h22_ds_buffer, hrr, L, FrameSize);
+
+	//----------------------------------------------------------------  PETRAGLIA
+	analisi_petr(h11xl, h11xl_buffer, out_M1_1, Hp, M, N, FrameSize);
+	analisi_petr(h12xl, h12xl_buffer, out_M2_1, Hp, M, N, FrameSize);
+	analisi_petr(h11xr, h11xr_buffer, out_M3_1, Hp, M, N, FrameSize);
+	analisi_petr(h12xr, h12xr_buffer, out_M4_1, Hp, M, N, FrameSize);
+
+	analisi_petr(h22xr, h22xr_buffer, out_M1_2, Hp, M, N, FrameSize);
+	analisi_petr(h21xr, h21xr_buffer, out_M2_2, Hp, M, N, FrameSize);
+	analisi_petr(h22xl, h22xl_buffer, out_M3_2, Hp, M, N, FrameSize);
+	analisi_petr(h21xl, h21xl_buffer, out_M4_2, Hp, M, N, FrameSize);
+
+	//---------------------------------------------------------------- DELAY
+
+	delay(X1, out_buf_dly1, dly1, delay_value, M, FrameSize);
+	delay(X2, out_buf_dly2, dly2, delay_value, M, FrameSize);
+
+	//----------------------------------------------------------------
 
 	for (int j = 0; j < FrameD; j++)
 	{
-		crossfilter(X, Y, X_buffer,delay_buffer,delay,e,G,D,K,M,N,FrameD,j);
+		crossfilter(out_M1_1, out_w1_1, Z_w1_1, W1, K, N, N, FrameD, j);
+		crossfilter(out_M2_1, out_w2_1, Z_w2_1, W2, K, N, N, FrameD, j);
+		crossfilter(out_M3_1, out_w3_1, Z_w3_1, W3, K, N, N, FrameD, j);
+		crossfilter(out_M4_1, out_w4_1, Z_w4_1, W4, K, N, N, FrameD, j);
+
+		crossfilter(out_M1_2, out_w1_2, Z_w4_2, W1, K, N, N, FrameD, j);
+		crossfilter(out_M2_2, out_w2_2, Z_w3_2, W2, K, N, N, FrameD, j);
+		crossfilter(out_M3_2, out_w3_2, Z_w2_2, W3, K, N, N, FrameD, j);
+		crossfilter(out_M4_2, out_w4_2, Z_w1_2, W4, K, N, N, FrameD, j);
+
 		if (i>0)
 		{
-			calculatemu(step_size, P, X, mu, M, beta, j);
-			adaptation(G, mu, e, X_buffer, K, M);
+			//calculatemu(step_size, P, X, mu, M, beta, j);
+			//adaptation(G, mu, e, X_buffer, K, M);
 			
 		}
 		for (int m = 0; m < M; m++) {
-			E[m][j] = e[m];
+			//E[m][j] = e[m];
 		}
 		
 	} 
 	
-	sintesi(F, output_Y, Y, M, N, FrameSize, OutputData);    //Funzione blocchi di sintesi
-	sintesi(F, output_D, D, M, N, FrameSize,OutputDataD);
-	sintesiE(F, output_E, E, M, N, FrameSize, OutputDataE);
+	//sintesi(F, output_Y, Y, M, N, FrameSize, OutputData);    //Funzione blocchi di sintesi
+	//sintesi(F, output_D, D, M, N, FrameSize,OutputDataD);
+	//sintesiE(F, output_E, E, M, N, FrameSize, OutputDataE);
 
 	i=1;  // dopo il primo frame adatto i filtri G
 
@@ -89,32 +133,8 @@ void __stdcall PlugIn::LEPlugin_Init()
 		p0 = ippsMalloc_64f(N);
 		ippsZero_64f(p0,N);
 	}
-	
-	if (P == 0) {
-		P = ippsMalloc_64f(2 * M - 1);
-		ippsSet_64f(1.0, P, 2 * M - 1);
-	}
-	 
-	if (mu == 0) {
-		mu = ippsMalloc_64f(2 * M - 1);
-		ippsZero_64f(mu, 2 * M - 1); // Vettore degli step size per ogni banda settato a 0
-	}
-	
-	
-	if (input_buffer == 0) {
-		input_buffer = ippsMalloc_64f(L);	//Buffer in ingresso al "System Unknown"
-		ippsZero_64f(input_buffer,L);
-	}
-	
-	if (e == 0){
-		e = ippsMalloc_64f(M);
-		ippsZero_64f(e, M);
-	}
 
-	if (y == 0){
-		y = ippsMalloc_64f(FrameSize);
-		ippsZero_64f(y, FrameSize);
-	}
+	 
 
 // inizializzo HRTF
 
@@ -315,6 +335,31 @@ void __stdcall PlugIn::LEPlugin_Init()
 	}
 
 	//------------------------------------------------
+
+	if (y1 == 0) {
+		y1 = ippsMalloc_64f(Buf_dim);
+		ippsZero_64f(y1, Buf_dim);
+	}
+
+	if (y2 == 0) {
+		y2 = ippsMalloc_64f(Buf_dim);
+		ippsZero_64f(y2, Buf_dim);
+	}
+
+	//------------------------------------------------
+
+	if (error1 == 0) {
+		error1 = ippsMalloc_64f(Buf_dim);
+		ippsZero_64f(error1, Buf_dim);
+	}
+
+	if (error2 == 0) {
+		error2 = ippsMalloc_64f(Buf_dim);
+		ippsZero_64f(error2, Buf_dim);
+	}
+
+	//------------------------------------------------
+
 	H = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
@@ -336,97 +381,6 @@ void __stdcall PlugIn::LEPlugin_Init()
 		memset(Hp[i], 0.0, (2*N-1) * sizeof(double));
 	}
 
-	G = new double* [2*M-1];
-	for (int i = 0; i < 2*M-1; i++)
-	{
-		G[i] = new double[K];
-		memset(G[i], 0.0, (K) * sizeof(double));
-	}
-
-	delay_buffer = new double* [M];
-	for (int i = 0; i < M; i++)
-	{
-		delay_buffer[i] = new double[delay];
-		memset(delay_buffer[i], 0.0, (delay) * sizeof(double));
-	}
-
-	X = new double* [2 * M - 1];		// Ingresso ai filtri adattivi per ogni banda
-	for (int i = 0; i < 2 * M - 1; i++)
-	{
-		X[i] = new double[FrameD];
-		memset(X[i], 0.0, (FrameD) * sizeof(double));
-	}
-
-	D = new double* [M];		// Segnale di riferimento in ogni banda
-	for (int i = 0; i < M ; i++)
-	{
-		D[i] = new double[FrameD];
-		memset(D[i], 0.0, (FrameD) * sizeof(double));
-	}
-
-	Y = new double* [M];		// Uscita dai filtri adattivi in  ogni banda
-	for (int i = 0; i < M; i++)
-	{
-		Y[i] = new double[FrameD];
-		memset(Y[i], 0.0, (FrameD) * sizeof(double));
-	}
-
-	E = new double* [M];		// Uscita dai filtri adattivi in  ogni banda
-	for (int i = 0; i < M; i++)
-	{
-		E[i] = new double[FrameD];
-		memset(E[i], 0.0, (FrameD) * sizeof(double));
-	}
-
-	d_buffer = new double* [M];		// Buffer in ingresso al banco di analisi del segnale di riferimento
-	for (int i = 0; i < M; i++)
-	{
-		d_buffer[i] = new double[N];
-		memset(d_buffer[i], 0.0, (N) * sizeof(double));
-	}
-
-	x_buffer = new double* [2 * M - 1];		// Buffer in ingresso al banco di analisi della Petraglia
-	for (int i = 0; i < 2 * M - 1; i++)
-	{
-		x_buffer[i] = new double[2 * N - 1];
-		memset(x_buffer[i], 0.0, (2 * N - 1) * sizeof(double));
-	}
-
-	X_buffer = new double* [2 * M - 1];		// Buffer in ingresso al banco di filtri adattivi
-	for (int i = 0; i < 2 * M - 1; i++)
-	{
-		X_buffer[i] = new double[K];
-		memset(X_buffer[i], 0.0, (K) * sizeof(double));
-	}
-
-	D_buffer = new double* [M];		// Buffer in ingresso al banco di filtri adattivi
-	for (int i = 0; i < M; i++)
-	{
-		D_buffer[i] = new double[N];
-		memset(D_buffer[i], 0.0, (N) * sizeof(double));
-	}
-
-	output_Y = new double* [M];		// Buffer in ingresso al banco di sintesi del sistema adattivo
-	for (int i = 0; i < M; i++)
-	{
-		output_Y[i] = new double[N];
-		memset(output_Y[i], 0.0, (N) * sizeof(double));
-	}
-
-	output_D = new double* [M];		// Buffer in ingresso al banco di sintesi del riferimento
-	for (int i = 0; i < M; i++)
-	{
-		output_D[i] = new double[N];
-		memset(output_D[i], 0.0, (N) * sizeof(double));
-	}
-
-	output_E = new double* [M];		// Buffer in ingresso al banco di sintesi per l'errore
-	for (int i = 0; i < M; i++)
-	{
-		output_E[i] = new double[N];
-		memset(output_E[i], 0.0, (N) * sizeof(double));
-	}
-	
 	//----------------------------------------------------------------
 	W1 = new double* [M];		
 	for (int i = 0; i < M; i++)
@@ -726,6 +680,95 @@ void __stdcall PlugIn::LEPlugin_Init()
 
 	//-----------------------------------------
 
+	y1_buf = new double* [M];
+	for (int i = 0; i < M; i++)
+	{
+		y1_buf[i] = new double[N];
+		memset(y1_buf[i], 0.0, (N) * sizeof(double));
+	}
+
+	y2_buf = new double* [M];
+	for (int i = 0; i < M; i++)
+	{
+		y2_buf[i] = new double[N];
+		memset(y2_buf[i], 0.0, (N) * sizeof(double));
+	}
+
+	//----------------------------------------
+
+	error1_buf = new double* [M];
+	for (int i = 0; i < M; i++)
+	{
+		error1_buf[i] = new double[N];
+		memset(error1_buf[i], 0.0, (N) * sizeof(double));
+	}
+
+	error2_buf = new double* [M];
+	for (int i = 0; i < M; i++)
+	{
+		error2_buf[i] = new double[N];
+		memset(error2_buf[i], 0.0, (N) * sizeof(double));
+	}
+
+	//----------------------------------------
+
+	out_M1_1 = new double* [2*M-1];
+	for (int i = 0; i < 2*M-1; i++)
+	{
+		out_M1_1[i] = new double[Buf_dim / M];
+		memset(out_M1_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+	}
+
+	out_M2_1 = new double* [2 * M - 1];
+	for (int i = 0; i < 2 * M - 1; i++)
+	{
+		out_M2_1[i] = new double[Buf_dim / M];
+		memset(out_M2_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+	}
+
+	out_M3_1 = new double* [2 * M - 1];
+	for (int i = 0; i < 2 * M - 1; i++)
+	{
+		out_M3_1[i] = new double[Buf_dim / M];
+		memset(out_M3_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+	}
+
+	out_M4_1 = new double* [2 * M - 1];
+	for (int i = 0; i < 2 * M - 1; i++)
+	{
+		out_M4_1[i] = new double[Buf_dim / M];
+		memset(out_M4_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+	}
+
+	out_M1_2 = new double* [2 * M - 1];
+	for (int i = 0; i < 2 * M - 1; i++)
+	{
+		out_M1_2[i] = new double[Buf_dim / M];
+		memset(out_M1_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+	}
+
+	out_M2_2 = new double* [2 * M - 1];
+	for (int i = 0; i < 2 * M - 1; i++)
+	{
+		out_M2_2[i] = new double[Buf_dim / M];
+		memset(out_M2_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+	}
+
+	out_M3_2 = new double* [2 * M - 1];
+	for (int i = 0; i < 2 * M - 1; i++)
+	{
+		out_M3_2[i] = new double[Buf_dim / M];
+		memset(out_M3_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+	}
+
+	out_M4_2 = new double* [2 * M - 1];
+	for (int i = 0; i < 2 * M - 1; i++)
+	{
+		out_M4_2[i] = new double[Buf_dim / M];
+		memset(out_M4_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+	}
+
+	//----------------------------------------
 
 	read_dat(save_name, p0, N);  // funzione per l'importazione del filtro prototipo
 
@@ -764,7 +807,7 @@ void __stdcall PlugIn::LEPlugin_Delete()
 {
 
 
-	calcG(G, F, M, K, N);
+	//calcG(G, F, M, K, N);
 
 	for (int i = 0; i < M; i++)
 		delete[] H[i];
@@ -774,61 +817,11 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		delete[] F[i];
 	delete[] F;
 
-	for (int i = 0; i < M; i++)
-		delete[] G[i];
-	delete[] G;
-
-	for (int i = 0; i < M; i++)
-		delete[] delay_buffer[i];
-	delete[] delay_buffer;
 
 	for (int i = 0; i < 2*M - 1; i++)
 		delete[] Hp[i];
 	delete[] Hp;
 
-	for (int i = 0; i < M; i++)
-		delete[] D[i];
-	delete[] D;
-
-	for (int i = 0; i < M; i++)
-		delete[] Y[i];
-	delete[] Y;
-
-	for (int i = 0; i < M; i++)
-		delete[] E[i];
-	delete[] E;
-
-	for (int i = 0; i < 2 * M - 1; i++)
-		delete[] X[i];
-	delete[] X;
-
-	for (int i = 0; i < M; i++)
-		delete[] d_buffer[i];
-	delete[] d_buffer;
-
-	for (int i = 0; i < 2*M-1; i++)
-		delete[] x_buffer[i];
-	delete[] x_buffer;
-
-	for (int i = 0; i < 2 * M - 1; i++)
-		delete[] X_buffer[i];
-	delete[] X_buffer;
-
-	for (int i = 0; i < M ; i++)
-		delete[] D_buffer[i];
-	delete[] D_buffer;
-
-	for (int i = 0; i < M; i++)
-		delete[] output_Y[i];
-	delete[] output_Y;
-
-	for (int i = 0; i < M; i++)
-		delete[] output_D[i];
-	delete[] output_D;
-
-	for (int i = 0; i < M; i++)
-		delete[] output_E[i];
-	delete[] output_E;
 //-----------------------------------------------
 	for (int i = 0; i < M; i++)
 		delete[] W1[i];
@@ -1011,41 +1004,69 @@ void __stdcall PlugIn::LEPlugin_Delete()
 
 	//----------------------------
 
+	for (int i = 0; i < M; i++)
+		delete[] y1_buf[i];
+	delete[] y1_buf;
+
+	for (int i = 0; i < M; i++)
+		delete[] y2_buf[i];
+	delete[] y2_buf;
+
+	//----------------------------
+
+	for (int i = 0; i < M; i++)
+		delete[] error1_buf[i];
+	delete[] error1_buf;
+
+	for (int i = 0; i < M; i++)
+		delete[] error2_buf[i];
+	delete[] error2_buf;
+
+	//----------------------------
+
+	for (int i = 0; i < M; i++)
+		delete[] out_M1_1[i];
+	delete[] out_M1_1;
+
+	for (int i = 0; i < M; i++)
+		delete[] out_M2_1[i];
+	delete[] out_M2_1;
+
+	for (int i = 0; i < M; i++)
+		delete[] out_M3_1[i];
+	delete[] out_M3_1;
+
+	for (int i = 0; i < M; i++)
+		delete[] out_M1_1[i];
+	delete[] out_M1_1;
+
+	for (int i = 0; i < M; i++)
+		delete[] out_M4_1[i];
+	delete[] out_M4_1;
+
+	for (int i = 0; i < M; i++)
+		delete[] out_M1_2[i];
+	delete[] out_M1_2;
+
+	for (int i = 0; i < M; i++)
+		delete[] out_M2_2[i];
+	delete[] out_M2_2;
+
+	for (int i = 0; i < M; i++)
+		delete[] out_M3_2[i];
+	delete[] out_M3_2;
+
+	for (int i = 0; i < M; i++)
+		delete[] out_M4_2[i];
+	delete[] out_M4_2;
+
+	//----------------------------
+
 	if (p0 != 0)
 	{
 		ippsFree(p0);
 		p0 = 0;
 	}
-
-	if (P != 0)
-	{
-		ippsFree(P);
-		P = 0;
-	}
-	if (mu != 0)
-	{
-		ippsFree(mu);
-		mu = 0;
-	}
-
-	if (e != 0)
-	{
-		ippsFree(e);
-		e = 0;
-	}
-
-	if (y != 0)
-	{
-		ippsFree(y);
-		y = 0;
-	}
-
-	if (input_buffer != 0)
-	{
-		ippsFree(input_buffer);
-		input_buffer = 0;
-	}
-	//--------------------------------
 
 	if (hll != 0)
 	{
@@ -1275,6 +1296,35 @@ void __stdcall PlugIn::LEPlugin_Delete()
 		ippsFree(e2);
 		e2 = 0;
 	}
+
+	//----------------------------
+
+	if (y1 != 0)
+	{
+		ippsFree(y1);
+		y1 = 0;
+	}
+
+	if (y2 != 0)
+	{
+		ippsFree(y2);
+		y2 = 0;
+	}
+	//---------------------
+
+	if (error1 != 0)
+	{
+		ippsFree(error1);
+		error1 = 0;
+	}
+
+	if (error2 != 0)
+	{
+		ippsFree(error2);
+		error2 = 0;
+	}
+	//---------------------
+
 }
 
 PlugIn::~PlugIn(void)
