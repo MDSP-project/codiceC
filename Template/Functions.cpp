@@ -255,7 +255,7 @@ void analisi(double* InputData_xl, double* InputData_xr, double** Xl_buffer, dou
 		
 			// scorrimento del vettore X_buff e aggiornamento
 			ippsCopy_64f(Xl_buffer[m], temp1, N);
-			ippsCopy_64f(temp1, Xl_buffer[m] + 1, N);
+			ippsCopy_64f(temp1, Xl_buffer[m] + 1, N-1);
 			Xl_buffer[m][0] = xl[n];
 
 			// moltiplicazione per il banco di analisi
@@ -265,7 +265,7 @@ void analisi(double* InputData_xl, double* InputData_xr, double** Xl_buffer, dou
 
 			// scorrimento del vettore X_buff e aggiornamento
 			ippsCopy_64f(Xr_buffer[m], temp2, N);
-			ippsCopy_64f(temp1, Xr_buffer[m] + 1, N);
+			ippsCopy_64f(temp2, Xr_buffer[m] + 1, N-1);
 			Xr_buffer[m][0] = xr[n];
 
 			// moltiplicazione per il banco di analisi
@@ -372,7 +372,7 @@ void analisi_petr(double* InputData_x, double** X_buffer, double** X, double** H
 
 			// moltiplicazione per il banco di analisi
 			//ippsDotProd_64f(H[m], X_buff[m], N, &Hx[m]);
-			ippsMul_64f(Hp[m], X_buffer[m], temp1, 2*N-1);
+			ippsMul_64f(Hp[m], X_buffer[m], temp1, N);
 			ippsSum_64f(temp1, 2*N-1, &U1[m]);
 
 
@@ -437,8 +437,9 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** W, int K, i
 	for (int m = 0; m < 2 * M - 1; m++)
 	{
 		// scorrimento del vettore X_buff e aggiornamento
-		ippsCopy_64f(X_buffer[m], temp1,K);
-		ippsCopy_64f(temp1, X_buffer[m] + 1, K - 1); 
+		ippsCopy_64f(X_buffer[m], temp1, K);
+		printf("%d", temp1);
+		ippsCopy_64f(temp1, X_buffer[m] + 1,K-1);
 		X_buffer[m][0] = X[m][j];
 	}
 
@@ -450,7 +451,7 @@ void crossfilter(double** X, double** Y, double** X_buffer, double** W, int K, i
 	{
 		for(int k=0; k<K; k++)
 		{
-			Y_tmp[m] = Y_tmp[m] + X_buffer[q][k] * W[m][k] + X_buffer[q - 1][k] * W[m - 1][k] + X_buffer[q + 1][k] * W[q + 1][k];
+			Y_tmp[m] = Y_tmp[m] + X_buffer[q][k] * W[m][k] + X_buffer[q - 1][k] * W[m - 1][k] + X_buffer[q + 1][k] * W[m + 1][k];
 		}
 		q = q + 2;
 	}
@@ -490,11 +491,12 @@ void calculatemu(double step_size, Ipp64f* P1, Ipp64f* P2, double** X1, double**
 	}
 
 	mu[0] = step_size / (alpha + P1[0] + P2[0] + P1[1] + P2[1]);
-	mu[2 * M - 2] = step_size / (alpha + P1[2 * M - 2] + P1[2 * M - 3] + P2[2 * M - 2] + P2[2 * M - 3]);
-	for (int m = 1; m < 2*M-2; m++)
+	mu[M - 1] = step_size / (alpha + P1[2 * M - 2] + P1[2 * M - 3] + P2[2 * M - 2] + P2[2 * M - 3]);
+	for (int m = 1; m < M-2; m++)
 	{
-		mu[m] = step_size / (alpha + P1[m - 1] + P1[m] + P1[m + 1] + P2[m - 1] + P2[m] + P2[m + 1]);
+		mu[m] = step_size / (alpha + P1[2*m - 1] + P1[2*m] + P1[2*m + 1] + P2[2*m - 1] + P2[2*m] + P2[2*m + 1]);
 	}
+	
 }
 
 void adaptation(double** W, double* mu, double* e1, double* e2, double** X1, double** X2, int K, int M)
@@ -519,8 +521,8 @@ void adaptation(double** W, double* mu, double* e1, double* e2, double** X1, dou
 
 	for (int k = 0; k < K; k++)
 	{
-		W_adj[0][k] = W[0][k] + mu[0] * (e1[0] * X1[0][k] + e1[1] * X1[1][k]+ e2[0] * X2[0][k] + e2[1] * X2[1][k]);
-		W_adj[M-1][k] = W[M-1][k] + mu[M-1] * (e1[M-1] * X1[M-1][k] + e1[M-2] * X1[M-2][k]+ e2[M - 1] * X2[M - 1][k] + e2[M - 2] * X2[M - 2][k]);
+		W_adj[0][k] = W[0][k] + mu[0] * (e1[0] * X1[0][k] + e1[1] * X1[1][k] + e2[0] * X2[0][k] + e2[1] * X2[1][k]);
+		W_adj[M-1][k] = W[M-1][k] + mu[M-1] * (e1[M-1] * X1[2*M-2][k] + e1[M - 2] * X1[2*M - 3][k] + e2[M - 1] * X2[2*M - 2][k] + e2[M - 2] * X2[2*M - 3][k]);
 	}
 
 	for (int m = 0; m < M; m++)
@@ -807,9 +809,9 @@ void delay(double** X, double** out_delay, double** delay_buffer, double delay_v
 		}
 		else if(delay_value!=FrameSize )
 		{
-			ippsCopy_64f(out_delay[m] + int(delay_value), X[m], FrameSize - delay_value);
+			ippsCopy_64f(X[m], out_delay[m] + int(delay_value), FrameSize - int(delay_value));
 		}
-		ippsCopy_64f(delay_buffer[m], X[m] + FrameSize - int(delay_value), FrameSize);
+		ippsCopy_64f(X[m] + FrameSize - int(delay_value), delay_buffer[m], int(delay_value));
 
 	}
 }

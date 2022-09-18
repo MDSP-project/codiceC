@@ -141,6 +141,8 @@ private:
 
 	double** out_M1_1, ** out_M2_1, ** out_M3_1, ** out_M4_1, ** out_M1_2, ** out_M2_2, ** out_M3_2, ** out_M4_2;
 
+	//double** bufftest1, ** bufftest2;
+
 	double step_size, beta, FrameD, alpha;
 
 

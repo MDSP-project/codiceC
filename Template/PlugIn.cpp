@@ -14,10 +14,10 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	SampleRate = CBFunction(this,NUTS_GET_FS_SR,1,(LPVOID)AUDIOPROC);	
 
 	N = 256;  // lunghezza filtro prototipo
-	M = 16;   // numero Bande
+	M = 8;   // numero Bande
 	L = 1024;  // lunghezza filtro incognito
-	step_size = 0.0005; //Valore massimo dello step size per l'adattamento
-	beta = 0.99; // Peso per la stima della potenza in ogni banda
+	step_size = 0.00005; //Valore massimo dello step size per l'adattamento
+	beta = 0.9; // Peso per la stima della potenza in ogni banda
 	alpha = 0.5E-10;
 	Buf_dim = FrameSize;
 	K =256; // Numero di tappi per ogni filtro adattivo
@@ -25,17 +25,19 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 
 	p0 = 0;
 	i = 0;
-	hll, hlr, hrl, hrr, hrtf, hrtfmax = 0;
-	h11xl, h21xl, h12xl, h22xl = 0;
-	h11xr, h21xr, h12xr, h22xr = 0;
-	h11_sx_buffer, h21_sx_buffer, h12_sx_buffer, h22_sx_buffer = 0;
-	h11_ds_buffer, h21_ds_buffer, h12_ds_buffer, h22_ds_buffer = 0;
-	P1_1, P2_1, P3_1, P4_1 = 0;
-	P1_2, P2_2, P3_2, P4_2 = 0;
-	mu1, mu2, mu3, mu4 = 0;
-	e1, e2 = 0;
-	y1, y2 = 0;
-	error1, error2 = 0;
+	hrtf = 0;
+	hll = 0;
+	hlr = hrl = hrr = hrtfmax = 0;
+	h11xl = h21xl = h12xl = h22xl = 0;
+	h11xr = h21xr = h12xr = h22xr = 0;
+	h11_sx_buffer = h21_sx_buffer = h12_sx_buffer = h22_sx_buffer = 0;
+	h11_ds_buffer = h21_ds_buffer = h12_ds_buffer = h22_ds_buffer = 0;
+	P1_1 = P2_1 = P3_1 = P4_1 = 0;
+	P1_2 = P2_2 = P3_2 = P4_2 = 0;
+	mu1 = mu2 = mu3 = mu4 = 0;
+	e1 = e2 = 0;
+	y1 = y2 = 0;
+	error1 = error2 = 0;
 
 	memset(save_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
 	memset(hll_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
@@ -43,11 +45,11 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	memset(hrl_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
 	memset(hrr_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
 
-	strcpy(save_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\prototipoMC.dat");
-	strcpy(hll_name, "C:\\Users\\alleg\Desktop\\SACC\\p1_left_ch0.f64");
-	strcpy(hlr_name, "C:\\Users\\alleg\Desktop\\SACC\\p1_left_ch1.f64");
-	strcpy(hrl_name, "C:\\Users\\alleg\Desktop\\SACC\\p1_right_ch0.f64");
-	strcpy(hrr_name, "C:\\Users\\alleg\Desktop\\SACC\\p1_right_ch1.f64");
+	strcpy(save_name, "C:\\Users\\alleg\\Desktop\\SACC\\prototipoMC.dat");
+	strcpy(hll_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\A.dat");
+	strcpy(hlr_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\B.dat");
+	strcpy(hrl_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\C.dat");
+	strcpy(hrr_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\D.dat");
 }
 
 int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID ExtraInfo)
@@ -75,6 +77,7 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	filterHRTF(InputData_xr, h21xr, h21_ds_buffer, hrl, L, FrameSize);
 	filterHRTF(InputData_xr, h22xr, h22_ds_buffer, hrr, L, FrameSize);
 
+	//analisi(h22xr, h11xl, bufftest1, bufftest2, E1, E2, H, M, N, FrameSize);
 	//----------------------------------------------------------------  PETRAGLIA
 	analisi_petr(h11xl, h11xl_buffer, out_M1_1, Hp, M, N, FrameSize);
 	analisi_petr(h12xl, h12xl_buffer, out_M2_1, Hp, M, N, FrameSize);
@@ -88,22 +91,22 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 
 	//---------------------------------------------------------------- DELAY
 
-	delay(X1, out_buf_dly1, dly1, delay_value, M, FrameSize);
-	delay(X2, out_buf_dly2, dly2, delay_value, M, FrameSize);
+	delay(X1, out_buf_dly1, dly1, delay_value, M, FrameSize/M);
+	delay(X2, out_buf_dly2, dly2, delay_value, M, FrameSize/M);
 
 	//----------------------------------------------------------------
 
 	for (int j = 0; j < FrameD; j++)
 	{
-		crossfilter(out_M1_1, out_w1_1, Z_w1_1, W1, K, N, N, FrameD, j);
-		crossfilter(out_M2_1, out_w2_1, Z_w2_1, W2, K, N, N, FrameD, j);
-		crossfilter(out_M3_1, out_w3_1, Z_w3_1, W3, K, N, N, FrameD, j);
-		crossfilter(out_M4_1, out_w4_1, Z_w4_1, W4, K, N, N, FrameD, j);
+		crossfilter(out_M1_1, out_w1_1, Z_w1_1, W1, K, M, N, FrameD, j);
+		crossfilter(out_M2_1, out_w2_1, Z_w2_1, W2, K, M, N, FrameD, j);
+		crossfilter(out_M3_1, out_w3_1, Z_w3_1, W3, K, M, N, FrameD, j);
+		crossfilter(out_M4_1, out_w4_1, Z_w4_1, W4, K, M, N, FrameD, j);
 
-		crossfilter(out_M1_2, out_w4_2, Z_w4_2, W1, K, N, N, FrameD, j);
-		crossfilter(out_M2_2, out_w3_2, Z_w3_2, W2, K, N, N, FrameD, j);
-		crossfilter(out_M3_2, out_w2_2, Z_w2_2, W3, K, N, N, FrameD, j);
-		crossfilter(out_M4_2, out_w1_2, Z_w1_2, W4, K, N, N, FrameD, j);
+		crossfilter(out_M1_2, out_w4_2, Z_w4_2, W4, K, M, N, FrameD, j);
+		crossfilter(out_M2_2, out_w3_2, Z_w3_2, W3, K, M, N, FrameD, j);
+		crossfilter(out_M3_2, out_w2_2, Z_w2_2, W2, K, M, N, FrameD, j);
+		crossfilter(out_M4_2, out_w1_2, Z_w1_2, W1, K, M, N, FrameD, j);
 
 		if (i>0)
 		{
@@ -136,7 +139,7 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	sintesi(F, y2_buf, out_sum_2, M, N, FrameSize, OutputDataR);
 	sintesiE(F, error1_buf, E1, M, N, FrameSize, OutputDataE_L);
 	sintesiE(F, error2_buf, E2, M, N, FrameSize, OutputDataE_R);
-
+	
 	i=1;  // dopo il primo frame adatto i filtri G
 
 	return COMPLETED;
@@ -153,7 +156,6 @@ void __stdcall PlugIn::LEPlugin_Init()
 		ippsZero_64f(p0,N);
 	}
 
-	 
 
 // inizializzo HRTF
 
@@ -789,6 +791,20 @@ void __stdcall PlugIn::LEPlugin_Init()
 
 	//----------------------------------------
 
+	/*bufftest1 = new double* [M];
+	for (int i = 0; i < M; i++)
+	{
+		bufftest1[i] = new double[N];
+		memset(bufftest1[i], 0.0, (N) * sizeof(double));
+	}
+
+	bufftest2 = new double* [M];
+	for (int i = 0; i < M; i++)
+	{
+		bufftest2[i] = new double[N];
+		memset(bufftest2[i], 0.0, (N) * sizeof(double));
+	}*/
+
 	read_dat(save_name, p0, N);  // funzione per l'importazione del filtro prototipo
 
 	
@@ -807,9 +823,9 @@ void __stdcall PlugIn::LEPlugin_Init()
 	//normalizzo HRTF
 	ippsCopy_64f(hll, hrtf, L);
 	ippsCopy_64f(hlr, hrtf + 1024, L);
-	ippsCopy_64f(hrl, hrtf + 2 * L, L);
-	ippsCopy_64f(hrr, hrtf + 3 * L, L);
-	ippsMax_64f(hrtf, 4 * L, hrtfmax);
+	ippsCopy_64f(hrl, hrtf + 2 * L-1, L);
+	ippsCopy_64f(hrr, hrtf + 3 * L-1, L);
+	ippsMax_64f(hrtf, 4 * L-1, hrtfmax);
 
 	for (size_t i = 0; i < L; i++)
 	{
@@ -876,39 +892,39 @@ void __stdcall PlugIn::LEPlugin_Delete()
 	delete[] an_buffer2;
 
 //-----------------------------------------
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2*M-1; i++)
 		delete[] h11xl_buffer[i];
 	delete[] h11xl_buffer;
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2*M-1; i++)
 		delete[] h12xl_buffer[i];
 	delete[] h12xl_buffer;
 
-	for (int i = 0; i < M; i++)
-		delete[] h12xl_buffer[i];
-	delete[] h12xl_buffer;
+	for (int i = 0; i < 2*M-1; i++)
+		delete[] h21xl_buffer[i];
+	delete[] h21xl_buffer;
 
-	for (int i = 0; i < M; i++)
-		delete[] h12xl_buffer[i];
-	delete[] h12xl_buffer;
+	for (int i = 0; i < 2*M-1; i++)
+		delete[] h22xl_buffer[i];
+	delete[] h22xl_buffer;
 
 	//-------------------------
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2*M-1; i++)
 		delete[] h11xr_buffer[i];
 	delete[] h11xr_buffer;
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2*M-1; i++)
 		delete[] h12xr_buffer[i];
 	delete[] h12xr_buffer;
 
-	for (int i = 0; i < M; i++)
-		delete[] h12xr_buffer[i];
-	delete[] h12xr_buffer;
+	for (int i = 0; i < 2*M-1; i++)
+		delete[] h21xr_buffer[i];
+	delete[] h21xr_buffer;
 
-	for (int i = 0; i < M; i++)
-		delete[] h12xr_buffer[i];
-	delete[] h12xr_buffer;
+	for (int i = 0; i < 2*M-1; i++)
+		delete[] h22xr_buffer[i];
+	delete[] h22xr_buffer;
 
 	//-------------------------
 
@@ -1054,10 +1070,6 @@ void __stdcall PlugIn::LEPlugin_Delete()
 	for (int i = 0; i < M; i++)
 		delete[] out_M3_1[i];
 	delete[] out_M3_1;
-
-	for (int i = 0; i < M; i++)
-		delete[] out_M1_1[i];
-	delete[] out_M1_1;
 
 	for (int i = 0; i < M; i++)
 		delete[] out_M4_1[i];
