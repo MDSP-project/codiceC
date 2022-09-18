@@ -2,6 +2,8 @@
 #include ".\plugin.h"
 
 
+//FINALE
+
 PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffect(_CBFunction,_PlugRef,ParentDlg)
 {
 
