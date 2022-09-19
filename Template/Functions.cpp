@@ -260,7 +260,7 @@ void analisi(double* InputData_d, double* InputData_x, double** D_buffer, double
 
 			// moltiplicazione per il banco di analisi
 			//ippsDotProd_64f(H[m], X_buff[m], N, &Hx[m]);
-			ippsMul_64f(Hp[m], X_buffer[m], temp1, N);
+			ippsMul_64f(Hp[m], X_buffer[m], temp1, 2*N-1);
 			ippsSum_64f(temp1, N, &U1[m]);
 
 			if (m<M)
