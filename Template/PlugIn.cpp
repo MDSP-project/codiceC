@@ -90,7 +90,6 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	filterHRTF(InputData_xr, h21xr, h21_ds_buffer, hrl, L, FrameSize);
 	filterHRTF(InputData_xr, h22xr, h22_ds_buffer, hrr, L, FrameSize);
 
-	//analisi(h22xr, h11xl, bufftest1, bufftest2, E1, E2, H, M, N, FrameSize);
 	//----------------------------------------------------------------  PETRAGLIA
 	analisi_petr(h11xl, h11xl_buffer, out_M1_1, Hp, M, N, FrameSize);
 	analisi_petr(h12xl, h12xl_buffer, out_M2_1, Hp, M, N, FrameSize);
@@ -152,7 +151,7 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 	sintesiE(F, error1_buf, E1, M, N, FrameSize, OutputDataE_L);
 	sintesiE(F, error2_buf, E2, M, N, FrameSize, OutputDataE_R);
 	
-	i=1;  // dopo il primo frame adatto i filtri G
+	i=1;  // dopo il primo frame adatto i filtri W
 
 	return COMPLETED;
 }

@@ -133,7 +133,6 @@ void petr_cos_h(double* p0, double** H, int M, int N) {
 	}
 
 	status = ippsConvolveGetBufferSize(N,N,ipp64f,funCfg,&bufSize);  
-
 	pBuffer = ippsMalloc_8u(bufSize);
 
 	ippsConvolve_64f(p0,N,p0,N,p0_tmp,0,pBuffer);  //convoluzione per i percorsi dritti (numeri reali)
@@ -149,13 +148,11 @@ void petr_cos_h(double* p0, double** H, int M, int N) {
 
 			
 		}
-
 		
 		ippsMul_64f(p0_tmp, tmp_1, H[q], 2*N - 1);
 		if (q < (2*M-2)) ippsMul_64f(q0_tmp, tmp_2, H[q + 1], 2*N-1);
 		q = q + 2;
-
-		
+	
 	}
 
 	/*
@@ -164,7 +161,6 @@ void petr_cos_h(double* p0, double** H, int M, int N) {
     "New Structures for Adaptive Filtering in Subbands with Critical Sampling" 
     by Mariane R. Petraglia
 	*/
-
 	for (int n = 0; n < 2 * M -1; n++) {
 
 
@@ -172,9 +168,6 @@ void petr_cos_h(double* p0, double** H, int M, int N) {
 		q01[n] = ((double)M - 2) * (double)n * q0_tmp[n];
 		H[0][n] = H[0][n] + q00[n];
 		H[2*M-2][n] = H[2 * M - 2][n] + q01[n];
-
-
-
 
 	}
 
@@ -740,9 +733,7 @@ void calcW(double** G, double** F, int M, int K, int N, char* name, char* save_p
 			g[k] += g_tmp[k];
 
 		}
-
 	}
-
 	write_dat(name, g, K + N - 1, save_path);
 
 	ippsFree(g_tmp);
