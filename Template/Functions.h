@@ -22,6 +22,6 @@ void calculatemu(double step_size, Ipp64f* P1, Ipp64f* P2, double** X1, double**
 void adaptation(double** W, double* mu, double* e1, double* e2, double** X1, double** X2, int K, int M);
 void sintesi(double** F, double** Output_Y, double** Y, int M, int N,int Framesize, double* OutputData);
 void sintesiE(double** F, double** Output_Y, double** Y, int M, int N, int Framesize, double* OutputData);
-void calcG(double** G, double** F, int M, int K, int N);
+void calcW(double** G, double** F, int M, int K, int N, char* name, char* save_path);
 void filterHRTF(Ipp64f* x, Ipp64f* y, Ipp64f* E_buf, Ipp64f* b, int L, int FrameSize);
 void delay(double** X, double** out_delay, double** delay_buffer, double delay_value, int M, int FrameSize);
