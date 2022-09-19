@@ -1326,7 +1326,7 @@ void __stdcall PlugIn::LEPlugin_Delete()
 	if (e2 != 0)
 	{
 		ippsFree(e2);
-		e2 = 0;
+ 		e2 = 0;
 	}
 
 	//----------------------------

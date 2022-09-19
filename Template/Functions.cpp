@@ -764,7 +764,7 @@ void filterHRTF(Ipp64f* x, Ipp64f* y, Ipp64f* E_buf, Ipp64f* b, int L, int Frame
 		double d = 0.0;
 
 		ippsCopy_64f(E_buf, temp1, L);
-		ippsCopy_64f(temp1, E_buf + 1, L);
+		ippsCopy_64f(temp1, E_buf + 1, L-1);
 		E_buf[0] = x[i];
 
 		for (size_t n = 0; n < L; n++)
