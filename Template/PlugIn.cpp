@@ -8,7 +8,7 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 {
 
 	LESetNumInput(2);  //dichiarazione 2 ingressi
-	LESetNumOutput(4); //dichiarazione 2 uscite
+	LESetNumOutput(4); //dichiarazione 4 uscite
 
 	FrameSize = CBFunction(this,NUTS_GET_FS_SR,0,(LPVOID)AUDIOPROC);
 	SampleRate = CBFunction(this,NUTS_GET_FS_SR,1,(LPVOID)AUDIOPROC);	
@@ -16,10 +16,11 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	N = 256;  // lunghezza filtro prototipo
 	M = 32;   // numero Bande
 	L = 1024;  // lunghezza filtro incognito
-	step_size = 0.0005; //Valore massimo dello step size per l'adattamento
+	step_size = 0.00005; //Valore massimo dello step size per l'adattamento
 	beta = 0.99; // Peso per la stima della potenza in ogni banda
 	alpha = 0.5E-10;
 	Buf_dim = FrameSize;
+	FrameD = FrameSize / M;
 	K =256; // Numero di tappi per ogni filtro adattivo
 	delay_value = N / M; // Valore del ritardo
 
@@ -48,8 +49,8 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	strcpy(save_name, "C:\\Users\\alleg\\Desktop\\SACC\\prototipoMC.dat");
 	strcpy(hll_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\A.dat");
 	strcpy(hlr_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\B.dat");
-	strcpy(hrl_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\B.dat");
-	strcpy(hrr_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\A.dat");
+	strcpy(hrl_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\C.dat");
+	strcpy(hrr_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\D.dat");
 }
 
 int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID ExtraInfo)
@@ -1569,7 +1570,7 @@ void __stdcall PlugIn::LERTWatchInit()
 	NewWatch6.LenByte = 256 * sizeof(char);
 	NewWatch6.TypeVar = WTC_LPCHAR;
 	NewWatch6.IDVar = W1_PATH;
-	sprintf_s(NewWatch6.VarName, MAXCARDEBUGPLUGIN, "path W1\0");
+	sprintf_s(NewWatch6.VarName, MAXCARDEBUGPLUGIN, "path filters\0");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch6);
 
 	WatchType NewWatch7;
@@ -1581,32 +1582,32 @@ void __stdcall PlugIn::LERTWatchInit()
 	sprintf_s(NewWatch7.VarName, MAXCARDEBUGPLUGIN, "nome W1\0");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch7);
 //----------------------------------------------------------------------
-	WatchType NewWatch8;
+	/*WatchType NewWatch8;
 	memset(&NewWatch8, 0, sizeof(WatchType));
 	NewWatch8.EnableWrite = true;
 	NewWatch8.LenByte = 256 * sizeof(char);
 	NewWatch8.TypeVar = WTC_LPCHAR;
 	NewWatch8.IDVar = W2_PATH;
 	sprintf_s(NewWatch8.VarName, MAXCARDEBUGPLUGIN, "path W2\0");
-	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch8);
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch8);*/
 
 	WatchType NewWatch9;
 	memset(&NewWatch9, 0, sizeof(WatchType));
 	NewWatch9.EnableWrite = true;
 	NewWatch9.LenByte = 256 * sizeof(char);
 	NewWatch9.TypeVar = WTC_LPCHAR;
-	NewWatch9.IDVar = W1_NAME;
+	NewWatch9.IDVar = W2_NAME;
 	sprintf_s(NewWatch9.VarName, MAXCARDEBUGPLUGIN, "nome W2\0");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch9);
 //---------------------------------------------------------------------
-	WatchType NewWatch10;
+	/*WatchType NewWatch10;
 	memset(&NewWatch10, 0, sizeof(WatchType));
 	NewWatch10.EnableWrite = true;
 	NewWatch10.LenByte = 256 * sizeof(char);
 	NewWatch10.TypeVar = WTC_LPCHAR;
 	NewWatch10.IDVar = W3_PATH;
 	sprintf_s(NewWatch10.VarName, MAXCARDEBUGPLUGIN, "path W3\0");
-	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch10);
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch10);*/
 
 	WatchType NewWatch11;
 	memset(&NewWatch11, 0, sizeof(WatchType));
@@ -1617,21 +1618,21 @@ void __stdcall PlugIn::LERTWatchInit()
 	sprintf_s(NewWatch11.VarName, MAXCARDEBUGPLUGIN, "nome W3\0");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch11);
 //-----------------------------------------------------------------
-	WatchType NewWatch12;
+	/*WatchType NewWatch12;
 	memset(&NewWatch12, 0, sizeof(WatchType));
 	NewWatch12.EnableWrite = true;
 	NewWatch12.LenByte = 256 * sizeof(char);
 	NewWatch12.TypeVar = WTC_LPCHAR;
 	NewWatch12.IDVar = W1_PATH;
 	sprintf_s(NewWatch12.VarName, MAXCARDEBUGPLUGIN, "path W4\0");
-	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch12);
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch12);*/
 
 	WatchType NewWatch13;
 	memset(&NewWatch13, 0, sizeof(WatchType));
 	NewWatch13.EnableWrite = true;
 	NewWatch13.LenByte = 256 * sizeof(char);
 	NewWatch13.TypeVar = WTC_LPCHAR;
-	NewWatch13.IDVar = W1_NAME;
+	NewWatch13.IDVar = W4_NAME;
 	sprintf_s(NewWatch13.VarName, MAXCARDEBUGPLUGIN, "nome W4\0");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch13);
 
