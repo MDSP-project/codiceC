@@ -14,10 +14,10 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	SampleRate = CBFunction(this,NUTS_GET_FS_SR,1,(LPVOID)AUDIOPROC);	
 
 	N = 256;  // lunghezza filtro prototipo
-	M = 8;   // numero Bande
+	M = 32;   // numero Bande
 	L = 1024;  // lunghezza filtro incognito
-	step_size = 0.0000005; //Valore massimo dello step size per l'adattamento
-	beta = 0.9; // Peso per la stima della potenza in ogni banda
+	step_size = 0.0005; //Valore massimo dello step size per l'adattamento
+	beta = 0.99; // Peso per la stima della potenza in ogni banda
 	alpha = 0.5E-10;
 	Buf_dim = FrameSize;
 	K =256; // Numero di tappi per ogni filtro adattivo
@@ -91,8 +91,8 @@ int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID E
 
 	//---------------------------------------------------------------- DELAY
 
-	delay(X1, out_buf_dly1, dly1, delay_value, M, FrameSize/M);
-	delay(X2, out_buf_dly2, dly2, delay_value, M, FrameSize/M);
+	delay(X1, out_buf_dly1, dly1, delay_value, M, FrameD);
+	delay(X2, out_buf_dly2, dly2, delay_value, M, FrameD);
 
 	//----------------------------------------------------------------
 
@@ -433,15 +433,15 @@ void __stdcall PlugIn::LEPlugin_Init()
 	X1 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		X1[i] = new double[Buf_dim/M];
-		memset(X1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		X1[i] = new double[FrameD];
+		memset(X1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	X2 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		X2[i] = new double[Buf_dim / M];
-		memset(X2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		X2[i] = new double[FrameD];
+		memset(X2[i], 0.0, (FrameD) * sizeof(double));
 	}
 	//-------------------------------------------------------
 	an_buffer1 = new double* [M];
@@ -523,28 +523,28 @@ void __stdcall PlugIn::LEPlugin_Init()
 	out_buf_dly1 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_buf_dly1[i] = new double[Buf_dim/M];
-		memset(out_buf_dly1[i], 0.0, (Buf_dim/M) * sizeof(double));
+		out_buf_dly1[i] = new double[FrameD];
+		memset(out_buf_dly1[i], 0.0, (FrameD) * sizeof(double));
 	}
 	
 	out_buf_dly2 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_buf_dly2[i] = new double[Buf_dim / M];
-		memset(out_buf_dly2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_buf_dly2[i] = new double[FrameD];
+		memset(out_buf_dly2[i], 0.0, (FrameD) * sizeof(double));
 	}
 	dly1 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		dly1[i] = new double[Buf_dim / M];
-		memset(dly1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		dly1[i] = new double[FrameD];
+		memset(dly1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	dly2 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		dly2[i] = new double[Buf_dim / M];
-		memset(dly2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		dly2[i] = new double[FrameD];
+		memset(dly2[i], 0.0, (FrameD) * sizeof(double));
 	}
 	//----------------------------------------------------------------
 
@@ -611,29 +611,29 @@ void __stdcall PlugIn::LEPlugin_Init()
 	out_w1_1 = new double* [M];
 	for (int i = 0; i <M; i++)
 	{
-		out_w1_1[i] = new double[Buf_dim/M];
-		memset(out_w1_1[i], 0.0, (Buf_dim/M) * sizeof(double));
+		out_w1_1[i] = new double[FrameD];
+		memset(out_w1_1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_w2_1 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_w2_1[i] = new double[Buf_dim / M];
-		memset(out_w2_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_w2_1[i] = new double[FrameD];
+		memset(out_w2_1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_w3_1 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_w3_1[i] = new double[Buf_dim / M];
-		memset(out_w3_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_w3_1[i] = new double[FrameD];
+		memset(out_w3_1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_w4_1 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_w4_1[i] = new double[Buf_dim / M];
-		memset(out_w4_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_w4_1[i] = new double[FrameD];
+		memset(out_w4_1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	//----------------------------------------------------------------
@@ -641,29 +641,29 @@ void __stdcall PlugIn::LEPlugin_Init()
 	out_w1_2 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_w1_2[i] = new double[Buf_dim / M];
-		memset(out_w1_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_w1_2[i] = new double[FrameD];
+		memset(out_w1_2[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_w2_2 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_w2_2[i] = new double[Buf_dim / M];
-		memset(out_w2_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_w2_2[i] = new double[FrameD];
+		memset(out_w2_2[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_w3_2 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_w3_2[i] = new double[Buf_dim / M];
-		memset(out_w3_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_w3_2[i] = new double[FrameD];
+		memset(out_w3_2[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_w4_2 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_w4_2[i] = new double[Buf_dim / M];
-		memset(out_w4_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_w4_2[i] = new double[FrameD];
+		memset(out_w4_2[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	//----------------------------------------------------------------
@@ -671,15 +671,15 @@ void __stdcall PlugIn::LEPlugin_Init()
 	out_sum_1 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_sum_1[i] = new double[Buf_dim / M];
-		memset(out_sum_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_sum_1[i] = new double[FrameD];
+		memset(out_sum_1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_sum_2 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		out_sum_2[i] = new double[Buf_dim / M];
-		memset(out_sum_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_sum_2[i] = new double[FrameD];
+		memset(out_sum_2[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	//-----------------------------------------
@@ -687,15 +687,15 @@ void __stdcall PlugIn::LEPlugin_Init()
 	E1 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		E1[i] = new double[Buf_dim / M];
-		memset(E1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		E1[i] = new double[FrameD];
+		memset(E1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	E2 = new double* [M];
 	for (int i = 0; i < M; i++)
 	{
-		E2[i] = new double[Buf_dim / M];
-		memset(E2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		E2[i] = new double[FrameD];
+		memset(E2[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	//-----------------------------------------
@@ -732,77 +732,64 @@ void __stdcall PlugIn::LEPlugin_Init()
 
 	//----------------------------------------
 
-	out_M1_1 = new double* [2*M-1];
+	out_M1_1 = new double* [2 * M - 1];
 	for (int i = 0; i < 2*M-1; i++)
 	{
-		out_M1_1[i] = new double[Buf_dim / M];
-		memset(out_M1_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_M1_1[i] = new double[FrameD];
+		memset(out_M1_1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_M2_1 = new double* [2 * M - 1];
 	for (int i = 0; i < 2 * M - 1; i++)
 	{
-		out_M2_1[i] = new double[Buf_dim / M];
-		memset(out_M2_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_M2_1[i] = new double[FrameD];
+		memset(out_M2_1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_M3_1 = new double* [2 * M - 1];
 	for (int i = 0; i < 2 * M - 1; i++)
 	{
-		out_M3_1[i] = new double[Buf_dim / M];
-		memset(out_M3_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_M3_1[i] = new double[FrameD];
+		memset(out_M3_1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_M4_1 = new double* [2 * M - 1];
 	for (int i = 0; i < 2 * M - 1; i++)
 	{
-		out_M4_1[i] = new double[Buf_dim / M];
-		memset(out_M4_1[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_M4_1[i] = new double[FrameD];
+		memset(out_M4_1[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_M1_2 = new double* [2 * M - 1];
 	for (int i = 0; i < 2 * M - 1; i++)
 	{
-		out_M1_2[i] = new double[Buf_dim / M];
-		memset(out_M1_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_M1_2[i] = new double[FrameD];
+		memset(out_M1_2[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_M2_2 = new double* [2 * M - 1];
 	for (int i = 0; i < 2 * M - 1; i++)
 	{
-		out_M2_2[i] = new double[Buf_dim / M];
-		memset(out_M2_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_M2_2[i] = new double[FrameD];
+		memset(out_M2_2[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_M3_2 = new double* [2 * M - 1];
 	for (int i = 0; i < 2 * M - 1; i++)
 	{
-		out_M3_2[i] = new double[Buf_dim / M];
-		memset(out_M3_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_M3_2[i] = new double[FrameD];
+		memset(out_M3_2[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	out_M4_2 = new double* [2 * M - 1];
 	for (int i = 0; i < 2 * M - 1; i++)
 	{
-		out_M4_2[i] = new double[Buf_dim / M];
-		memset(out_M4_2[i], 0.0, (Buf_dim / M) * sizeof(double));
+		out_M4_2[i] = new double[FrameD];
+		memset(out_M4_2[i], 0.0, (FrameD) * sizeof(double));
 	}
 
 	//----------------------------------------
 
-	/*bufftest1 = new double* [M];
-	for (int i = 0; i < M; i++)
-	{
-		bufftest1[i] = new double[N];
-		memset(bufftest1[i], 0.0, (N) * sizeof(double));
-	}
-
-	bufftest2 = new double* [M];
-	for (int i = 0; i < M; i++)
-	{
-		bufftest2[i] = new double[N];
-		memset(bufftest2[i], 0.0, (N) * sizeof(double));
-	}*/
 
 	read_dat(save_name, p0, N);  // funzione per l'importazione del filtro prototipo
 
@@ -839,9 +826,6 @@ void __stdcall PlugIn::LEPlugin_Init()
 
 void __stdcall PlugIn::LEPlugin_Delete()
 {
-
-
-	//calcG(G, F, M, K, N);
 
 	for (int i = 0; i < M; i++)
 		delete[] H[i];
@@ -963,7 +947,7 @@ void __stdcall PlugIn::LEPlugin_Delete()
 
 	//-------------------------------
 
-	for (int i = 0; i < 2*M-1; i++)
+	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] Z_w1_2[i];
 	delete[] Z_w1_2;
 
@@ -981,7 +965,7 @@ void __stdcall PlugIn::LEPlugin_Delete()
 
 	//---------------------------
 
-	for (int i = 0; i <M; i++)
+	for (int i = 0; i < M; i++)
 		delete[] out_w1_1[i];
 	delete[] out_w1_1;
 
@@ -1058,35 +1042,35 @@ void __stdcall PlugIn::LEPlugin_Delete()
 
 	//----------------------------
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] out_M1_1[i];
 	delete[] out_M1_1;
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] out_M2_1[i];
 	delete[] out_M2_1;
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] out_M3_1[i];
 	delete[] out_M3_1;
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] out_M4_1[i];
 	delete[] out_M4_1;
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] out_M1_2[i];
 	delete[] out_M1_2;
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] out_M2_2[i];
 	delete[] out_M2_2;
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] out_M3_2[i];
 	delete[] out_M3_2;
 
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < 2 * M - 1; i++)
 		delete[] out_M4_2[i];
 	delete[] out_M4_2;
 
