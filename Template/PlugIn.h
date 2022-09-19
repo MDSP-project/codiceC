@@ -25,17 +25,11 @@
 #define LUNGHEZZA_INCOGNITO_ID 3
 #define STEPSIZE_ID 4
 #define PATH_ID 5
-#define W1_PATH 6
+#define SAVE_PATH 6
 #define W1_NAME 7
-
-#define W2_PATH 8
-#define W2_NAME 9
-
-#define W3_PATH 10
-#define W3_NAME 11
-
-#define W4_PATH 12
-#define W4_NAME 13
+#define W2_NAME 8
+#define W3_NAME 9
+#define W4_NAME 10
 
 #define PIN_SEGNALE_L 0
 #define PIN_SEGNALE_R 1
@@ -97,6 +91,7 @@ private:
 	Ipp64f* p0; //ok
 	Ipp64f* hll, *hlr, *hrl, *hrr, *hrtf, *hrtfmax; //ok
 	char save_name[MAX_FILE_NAME_LENGTH], hll_name[MAX_FILE_NAME_LENGTH], hlr_name[MAX_FILE_NAME_LENGTH],hrl_name[MAX_FILE_NAME_LENGTH],hrr_name[MAX_FILE_NAME_LENGTH];
+	char w1_name[MAX_FILE_NAME_LENGTH], w2_name[MAX_FILE_NAME_LENGTH], w3_name[MAX_FILE_NAME_LENGTH], w4_name[MAX_FILE_NAME_LENGTH], save_path[MAX_FILE_NAME_LENGTH];
 	int N, M, L, K, delay_value,i, Buf_dim;
 
 	double** Hp, ** H, **F;
@@ -140,8 +135,6 @@ private:
 	double** error1_buf, ** error2_buf;//ok
 
 	double** out_M1_1, ** out_M2_1, ** out_M3_1, ** out_M4_1, ** out_M1_2, ** out_M2_2, ** out_M3_2, ** out_M4_2;
-
-	//double** bufftest1, ** bufftest2;
 
 	double step_size, beta, FrameD, alpha;
 

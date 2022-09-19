@@ -10,6 +10,7 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	LESetNumInput(2);  //dichiarazione 2 ingressi
 	LESetNumOutput(4); //dichiarazione 4 uscite
 
+
 	FrameSize = CBFunction(this,NUTS_GET_FS_SR,0,(LPVOID)AUDIOPROC);
 	SampleRate = CBFunction(this,NUTS_GET_FS_SR,1,(LPVOID)AUDIOPROC);	
 
@@ -45,12 +46,23 @@ PlugIn::PlugIn(InterfaceType _CBFunction,void * _PlugRef,HWND ParentDlg): LEEffe
 	memset(hlr_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
 	memset(hrl_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
 	memset(hrr_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
+	memset(w1_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
+	memset(w2_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
+	memset(w3_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
+	memset(w4_name, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
+	memset(save_path, 0, MAX_FILE_NAME_LENGTH * sizeof(char));
+
 
 	strcpy(save_name, "C:\\Users\\alleg\\Desktop\\SACC\\prototipoMC.dat");
 	strcpy(hll_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\A.dat");
 	strcpy(hlr_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\B.dat");
 	strcpy(hrl_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\C.dat");
 	strcpy(hrr_name, "C:\\Users\\alleg\\Desktop\\SACC_Codice Matlab 14 Luglio\\D.dat");
+	strcpy(w1_name, "w1.dat");
+	strcpy(w2_name, "w2.dat");
+	strcpy(w3_name, "w3.dat");
+	strcpy(w4_name, "w4.dat");
+	strcpy(save_path, "C:\\Users\\alleg\\Desktop\\");
 }
 
 int __stdcall PlugIn::LEPlugin_Process(PinType **Input,PinType **Output,LPVOID ExtraInfo)
@@ -827,6 +839,11 @@ void __stdcall PlugIn::LEPlugin_Init()
 
 void __stdcall PlugIn::LEPlugin_Delete()
 {
+	calcW(W1, F, M, K, N, w1_name, save_path);
+	calcW(W2, F, M, K, N, w2_name, save_path);
+	calcW(W3, F, M, K, N, w3_name, save_path);
+	calcW(W4, F, M, K, N, w4_name, save_path);
+
 
 	for (int i = 0; i < M; i++)
 		delete[] H[i];
@@ -1433,6 +1450,36 @@ void __stdcall PlugIn::LESetParameter(int Index,void *Data,LPVOID bBroadCastInfo
 		strcpy(save_name, (char*)Data);
 		CBFunction(this, NUTS_UPDATERTWATCH, PATH_ID, 0);
 	}
+//--------------------------------------------------------------------------
+	if (Index == SAVE_PATH)
+	{
+		strcpy(save_path, (char*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, SAVE_PATH, 0);
+	}
+
+	if (Index == W1_NAME)
+	{
+		strcpy(w1_name, (char*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, W1_NAME, 0);
+	}
+
+	if (Index == W2_NAME)
+	{
+		strcpy(w2_name, (char*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, W2_NAME, 0);
+	}
+
+	if (Index == W3_NAME)
+	{
+		strcpy(w3_name, (char*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, W3_NAME, 0);
+	}
+
+	if (Index == W4_NAME)
+	{
+		strcpy(w4_name, (char*)Data);
+		CBFunction(this, NUTS_UPDATERTWATCH, W4_NAME, 0);
+	}
 	
 }
 
@@ -1465,6 +1512,39 @@ int  __stdcall PlugIn::LEGetParameter(int Index,void *Data)
 	if (Index == PATH_ID)
 	{
 		strcpy((char*)Data, save_name);
+	}
+//--------------------------------------------------
+
+	if (Index == SAVE_PATH)
+	{
+		strcpy((char*)Data, save_path);
+	}
+
+
+
+	if (Index == W1_NAME)
+	{
+		strcpy((char*)Data, w1_name);
+	}
+
+
+
+	if (Index == W2_NAME)
+	{
+		strcpy((char*)Data, w2_name);
+	}
+
+
+
+	if (Index == W3_NAME)
+	{
+		strcpy((char*)Data, w3_name);
+	}
+
+
+	if (Index == W4_NAME)
+	{
+		strcpy((char*)Data, w4_name);
 	}
 
 	return 0;
@@ -1569,7 +1649,7 @@ void __stdcall PlugIn::LERTWatchInit()
 	NewWatch6.EnableWrite = true;
 	NewWatch6.LenByte = 256 * sizeof(char);
 	NewWatch6.TypeVar = WTC_LPCHAR;
-	NewWatch6.IDVar = W1_PATH;
+	NewWatch6.IDVar = SAVE_PATH;
 	sprintf_s(NewWatch6.VarName, MAXCARDEBUGPLUGIN, "path filters\0");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch6);
 
@@ -1582,59 +1662,35 @@ void __stdcall PlugIn::LERTWatchInit()
 	sprintf_s(NewWatch7.VarName, MAXCARDEBUGPLUGIN, "nome W1\0");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch7);
 //----------------------------------------------------------------------
-	/*WatchType NewWatch8;
+
+	WatchType NewWatch8;
 	memset(&NewWatch8, 0, sizeof(WatchType));
 	NewWatch8.EnableWrite = true;
 	NewWatch8.LenByte = 256 * sizeof(char);
 	NewWatch8.TypeVar = WTC_LPCHAR;
-	NewWatch8.IDVar = W2_PATH;
-	sprintf_s(NewWatch8.VarName, MAXCARDEBUGPLUGIN, "path W2\0");
-	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch8);*/
+	NewWatch8.IDVar = W2_NAME;
+	sprintf_s(NewWatch8.VarName, MAXCARDEBUGPLUGIN, "nome W2\0");
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch8);
+//---------------------------------------------------------------------
 
 	WatchType NewWatch9;
 	memset(&NewWatch9, 0, sizeof(WatchType));
 	NewWatch9.EnableWrite = true;
 	NewWatch9.LenByte = 256 * sizeof(char);
 	NewWatch9.TypeVar = WTC_LPCHAR;
-	NewWatch9.IDVar = W2_NAME;
-	sprintf_s(NewWatch9.VarName, MAXCARDEBUGPLUGIN, "nome W2\0");
+	NewWatch9.IDVar = W3_NAME;
+	sprintf_s(NewWatch9.VarName, MAXCARDEBUGPLUGIN, "nome W3\0");
 	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch9);
-//---------------------------------------------------------------------
-	/*WatchType NewWatch10;
+//-----------------------------------------------------------------
+
+	WatchType NewWatch10;
 	memset(&NewWatch10, 0, sizeof(WatchType));
 	NewWatch10.EnableWrite = true;
 	NewWatch10.LenByte = 256 * sizeof(char);
 	NewWatch10.TypeVar = WTC_LPCHAR;
-	NewWatch10.IDVar = W3_PATH;
-	sprintf_s(NewWatch10.VarName, MAXCARDEBUGPLUGIN, "path W3\0");
-	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch10);*/
-
-	WatchType NewWatch11;
-	memset(&NewWatch11, 0, sizeof(WatchType));
-	NewWatch11.EnableWrite = true;
-	NewWatch11.LenByte = 256 * sizeof(char);
-	NewWatch11.TypeVar = WTC_LPCHAR;
-	NewWatch11.IDVar = W3_NAME;
-	sprintf_s(NewWatch11.VarName, MAXCARDEBUGPLUGIN, "nome W3\0");
-	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch11);
-//-----------------------------------------------------------------
-	/*WatchType NewWatch12;
-	memset(&NewWatch12, 0, sizeof(WatchType));
-	NewWatch12.EnableWrite = true;
-	NewWatch12.LenByte = 256 * sizeof(char);
-	NewWatch12.TypeVar = WTC_LPCHAR;
-	NewWatch12.IDVar = W1_PATH;
-	sprintf_s(NewWatch12.VarName, MAXCARDEBUGPLUGIN, "path W4\0");
-	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch12);*/
-
-	WatchType NewWatch13;
-	memset(&NewWatch13, 0, sizeof(WatchType));
-	NewWatch13.EnableWrite = true;
-	NewWatch13.LenByte = 256 * sizeof(char);
-	NewWatch13.TypeVar = WTC_LPCHAR;
-	NewWatch13.IDVar = W4_NAME;
-	sprintf_s(NewWatch13.VarName, MAXCARDEBUGPLUGIN, "nome W4\0");
-	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch13);
+	NewWatch10.IDVar = W4_NAME;
+	sprintf_s(NewWatch10.VarName, MAXCARDEBUGPLUGIN, "nome W4\0");
+	CBFunction(this, NUTS_ADDRTWATCH, TRUE, &NewWatch10);
 
 
 }
